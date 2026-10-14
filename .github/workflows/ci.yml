@@ -1,0 +1,84 @@
+# libjhasm CI（Linux + Windows）
+#
+# 范围：libjhasm 静态库（暂无 unittest 目标，先做构建门）。
+# 依赖：luiox-repo git 直连包（libjblw/libjbytecode/libca）由 CI 显式注册
+# （与根 xmake.lua 的声明幂等同源）。模式对齐 luiox/libjbc/mjt 仓 CI。
+
+name: CI
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-linux:
+    name: build (linux)
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup xmake
+        uses: xmake-io/github-action-setup-xmake@v1
+        with:
+          xmake-version: v3.0.9
+          actions-cache-folder: '.xmake-cache'
+
+      - name: Cache xrepo packages
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.xmake/packages
+            ~/.local/share/xmake
+          key: libjhasm-xrepo-linux-x64-xmake309-${{ hashFiles('xmake.lua') }}
+          restore-keys: |
+            libjhasm-xrepo-linux-x64-xmake309-
+
+      - name: Register luiox-repo
+        run: xmake repo --add luiox-repo https://github.com/luiox/luiox-repo.git
+
+      - name: Configure
+        run: xmake f -p linux -y
+
+      - name: Build
+        run: xmake build -y libjhasm
+
+  build-windows:
+    name: build (windows)
+    runs-on: windows-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup xmake
+        uses: xmake-io/github-action-setup-xmake@v1
+        with:
+          xmake-version: v3.0.9
+          actions-cache-folder: '.xmake-cache'
+
+      - name: Cache xrepo packages
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/AppData/Local/.xmake/packages
+          key: libjhasm-xrepo-windows-x64-xmake309-${{ hashFiles('xmake.lua') }}
+          restore-keys: |
+            libjhasm-xrepo-windows-x64-xmake309-
+
+      - name: Register luiox-repo
+        shell: bash
+        run: xmake repo --add luiox-repo https://github.com/luiox/luiox-repo.git
+
+      - name: Configure
+        shell: bash
+        run: xmake f -p windows -y
+
+      - name: Build
+        shell: bash
+        run: xmake build -y libjhasm
