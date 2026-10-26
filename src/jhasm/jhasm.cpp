@@ -4,7 +4,7 @@ namespace jhasm {
 
 const char* get_lib_version() noexcept
 {
-    return "0.2.0";
+    return "0.3.0";
 }
 
 const char* get_upstream_revision() noexcept

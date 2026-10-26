@@ -205,6 +205,16 @@ JvmInstructions::JvmInstructions()
          "astore",
          "ret"},
         {OperandKind::LITERAL});
+    add({"iload_0", "iload_1", "iload_2", "iload_3",
+         "lload_0", "lload_1", "lload_2", "lload_3",
+         "fload_0", "fload_1", "fload_2", "fload_3",
+         "dload_0", "dload_1", "dload_2", "dload_3",
+         "aload_0", "aload_1", "aload_2", "aload_3",
+         "istore_0", "istore_1", "istore_2", "istore_3",
+         "lstore_0", "lstore_1", "lstore_2", "lstore_3",
+         "fstore_0", "fstore_1", "fstore_2", "fstore_3",
+         "dstore_0", "dstore_1", "dstore_2", "dstore_3",
+         "astore_0", "astore_1", "astore_2", "astore_3"}, {});
     add({"iinc"}, {OperandKind::LITERAL, OperandKind::INTEGER});
     add({"ifeq",      "ifne",      "iflt",      "ifge",      "ifgt",      "ifle",      "if_icmpeq",
          "if_icmpne", "if_icmplt", "if_icmpge", "if_icmpgt", "if_icmple", "if_acmpeq", "if_acmpne",

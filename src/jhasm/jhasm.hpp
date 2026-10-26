@@ -17,7 +17,7 @@ const char* get_lib_version() noexcept;
 ///@return 进程生命周期内有效的 Git revision 静态字符串。
 const char* get_upstream_revision() noexcept;
 
-///@brief 执行完整 Jasm JVM 汇编流水线并返回 BLW model 与 classfile bytes。
+///@brief 执行完整 Jasm JVM 汇编流水线并返回 classfile bytes。
 error::Result<compile::JvmCompileResult> assemble(ca::str::Utf16StringRef     sourceName,
                                                   ca::str::Utf16StringRef     source,
                                                   compile::JvmCompilerOptions options = {});
