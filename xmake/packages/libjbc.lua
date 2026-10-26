@@ -51,6 +51,9 @@ package("libjbc")
     -- 0.4.17 = 移除 consumer 模块（消费者协议面归上层仓）+ MethodEditor
     -- 从零建方法门面 + addMethodWithBody。libjhasm 编译路径依赖 MethodEditor。
     add_versions("0.4.17", "2a44a37010c04fe8772270f019b29422f3ff91b7") -- v0.4.17  2026-10-25
+    -- 0.4.18 = MethodParameters 放行接收者行形态（JVMS 4.7.24，javac 对非
+    -- 静态方法恒带 this 行）；.parameters 源面依赖本修复。
+    add_versions("0.4.18", "29f6ef436461fa48ca27661778ffb8f139633bed") -- v0.4.18  2026-10-26
 
     -- 嵌套 libca 直接钉到本仓单源版本（见文件头链接说明）。
     add_deps("libca " .. LUIOX_LIBCA_VERSION, {configs = {modules = LUIOX_LIBCA_MODULES}})
