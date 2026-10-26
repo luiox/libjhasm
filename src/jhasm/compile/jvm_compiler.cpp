@@ -477,7 +477,7 @@ C::Op opcode(ca::str::Utf16StringRef name)
 
 struct ConstSpec final
 {
-    enum class Kind : ca::u8 { Int, Long, Float, Double, String, Class, MethodHandle, Dynamic };
+    enum class Kind : ca::u8 { Int, Long, Float, Double, String, Class, MethodType, MethodHandle, Dynamic };
     Kind        kind = Kind::Int;
     ca::i64     num  = 0;
     ca::u32     fbits = 0;
@@ -675,8 +675,18 @@ ConstSpec constantValue(const ast::ElementPtr& value, SpecArena& arena)
             return result;
         }
         const auto descriptor = narrow(*value);
+        if (!descriptor.empty() && descriptor.front() == '(') {
+            //MethodType 常量（indy BSM 参数族）：方法描述符整串落
+            //CONSTANT_MethodType（parseFieldType 不收 '(' 形，分道解析）。
+            if (jbc::type::parseMethodDescriptor(descriptor).is_err())
+                fail("Invalid method descriptor");
+            ConstSpec result;
+            result.kind = ConstSpec::Kind::MethodType;
+            result.str  = arena.put(descriptor);
+            return result;
+        }
         if (!descriptor.empty() &&
-            (descriptor.front() == 'L' || descriptor.front() == '[' || descriptor.front() == '(')) {
+            (descriptor.front() == 'L' || descriptor.front() == '[')) {
             if (jbc::type::parseFieldType(descriptor).is_err()) fail("Invalid type descriptor");
             ConstSpec result;
             result.kind = ConstSpec::Kind::Class;
@@ -732,6 +742,7 @@ ca::u32 internConstant(IR::ClassSession& session, const ConstSpec& value)
     case ConstSpec::Kind::Double: return session.internDoubleBits(value.dbits);
     case ConstSpec::Kind::String: return session.internString(value.str);
     case ConstSpec::Kind::Class: return session.internClass(value.str);
+    case ConstSpec::Kind::MethodType: return session.internMethodType(value.str);
     case ConstSpec::Kind::MethodHandle:
         return require(session.internMethodHandle(value.handle), "internMethodHandle");
     case ConstSpec::Kind::Dynamic:
@@ -773,6 +784,10 @@ IR::BsmArg bsmArgOf(IR::ClassSession& session, const ConstSpec& value)
         return result;
     case ConstSpec::Kind::Class:
         result.kind = IR::BsmArg::Kind::Class;
+        result.str  = value.str;
+        return result;
+    case ConstSpec::Kind::MethodType:
+        result.kind = IR::BsmArg::Kind::MethodType;
         result.str  = value.str;
         return result;
     case ConstSpec::Kind::MethodHandle:
