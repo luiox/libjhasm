@@ -759,48 +759,26 @@ ca::u32 internConstant(IR::ClassSession& session, const ConstSpec& value)
     fail("Unreachable constant kind");
 }
 
-///@brief 常量装载规范化落码（沿旧栈 jblw 写出口径）：小整数/浮点/长整/双精
-///一律最短 const_N 族；其余 int/float 落 ldc、long/double 落 ldc2_w；ldc 索引
-///超 u1 域升格 ldc_w。bipush/sipush/ldc 族文本并入同一语义常量后不再保形。
+///@brief 常量装载规范化落码（沿旧栈 jblw 写出口径）：int/float 一律落 ldc
+///（索引超 u1 域升格 ldc_w），long/double 一律落 ldc2_w（cat2 常量 JVM 只认
+///ldc2_w）。bipush/sipush/ldc 族文本并入同一语义常量后不再保形。
 IR::Insn constantLoad(IR::ClassSession& session, const ConstSpec& value)
 {
     IR::Insn in;
     switch (value.kind) {
     case ConstSpec::Kind::Int:
-        if (value.num >= -1 && value.num <= 5) {
-            in.op = static_cast<C::Op>(static_cast<ca::i32>(C::Op::ICONST_M1) +
-                                       static_cast<ca::i32>(value.num) + 1);
-            return in;
-        }
         in.op = C::Op::LDC;
         in.cp = session.internInteger(static_cast<ca::i32>(value.num));
         break;
     case ConstSpec::Kind::Long:
-        if (value.num == 0 || value.num == 1) {
-            in.op = value.num == 0 ? C::Op::LCONST_0 : C::Op::LCONST_1;
-            return in;
-        }
+    case ConstSpec::Kind::Double:
         in.op = C::Op::LDC2_W;
-        in.cp = session.internLong(value.num);
+        in.cp = value.kind == ConstSpec::Kind::Long ? session.internLong(value.num)
+                                                    : session.internDoubleBits(value.dbits);
         break;
     case ConstSpec::Kind::Float:
-        if (value.fbits == 0x00000000U || value.fbits == 0x3F800000U ||
-            value.fbits == 0x40000000U) {
-            in.op = value.fbits == 0x00000000U  ? C::Op::FCONST_0
-                    : value.fbits == 0x3F800000U ? C::Op::FCONST_1
-                                                 : C::Op::FCONST_2;
-            return in;
-        }
         in.op = C::Op::LDC;
         in.cp = session.internFloatBits(value.fbits);
-        break;
-    case ConstSpec::Kind::Double:
-        if (value.dbits == 0x0000000000000000ULL || value.dbits == 0x3FF0000000000000ULL) {
-            in.op = value.dbits == 0x0000000000000000ULL ? C::Op::DCONST_0 : C::Op::DCONST_1;
-            return in;
-        }
-        in.op = C::Op::LDC2_W;
-        in.cp = session.internDoubleBits(value.dbits);
         break;
     default:
         in.op = C::Op::LDC;
