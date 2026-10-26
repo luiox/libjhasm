@@ -1443,6 +1443,51 @@ void finishBody(IR::ClassSession& session, IR::MethodId method, IR::CodeUnit& un
 {
     C::ClassFile& cf = session.backing();
 
+    //Return 族指令与描述符返回类别一致性（JVMS §4.10.1.4 returnTypeMatching；
+    //jasmin 同款装配期拒绝）：()I 方法体写 `return`、`()V` 写 `ireturn` 这类
+    //源级错配在帧分析引擎无感（引擎只对栈做形状/宽度检查），在此按描述符
+    //返回类型逐一比对方法体内全部 xRETURN 指令。
+    {
+        const auto parsed = jbc::type::parseMethodDescriptor(descriptor);
+        char        expect = 'V';
+        if (parsed.is_ok()) {
+            const auto& md = parsed.unwrap();
+            if (md.ret_void) {
+                expect = 'V';
+            }
+            else if (md.ret.kind == jbc::type::TypeDesc::Kind::Class) {
+                expect = 'A';   // 引用（含数组：class_name + array_dims）
+            }
+            else {
+                switch (md.ret.primitive) {
+                case jbc::type::BaseType::Long: expect = 'J'; break;
+                case jbc::type::BaseType::Float: expect = 'F'; break;
+                case jbc::type::BaseType::Double: expect = 'D'; break;
+                default: expect = 'I'; break;   // B/C/S/Z/I 同 IRETURN 装载类别
+                }
+            }
+        }
+        const auto returns = [&](C::Op op) {
+            switch (op) {
+            case C::Op::IRETURN: return 'I';
+            case C::Op::LRETURN: return 'J';
+            case C::Op::FRETURN: return 'F';
+            case C::Op::DRETURN: return 'D';
+            case C::Op::ARETURN: return 'A';
+            case C::Op::RETURN: return 'V';
+            default: return '\0';
+            }
+        };
+        for (const auto id : unit.dom.order()) {
+            const auto* insn = unit.dom.peek(id);
+            if (insn == nullptr) continue;
+            const char got = returns(insn->op);
+            if (got != '\0' && got != expect)
+                fail("Return opcode does not match method descriptor return type: " + name +
+                     descriptor);
+        }
+    }
+
     require(IR::lowerMethod(session, method), "lowerMethod");
 
     jbc::analysis::MethodSig sig;
