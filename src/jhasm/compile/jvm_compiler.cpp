@@ -759,6 +759,58 @@ ca::u32 internConstant(IR::ClassSession& session, const ConstSpec& value)
     fail("Unreachable constant kind");
 }
 
+///@brief 常量装载规范化落码（沿旧栈 jblw 写出口径）：小整数/浮点/长整/双精
+///一律最短 const_N 族；其余 int/float 落 ldc、long/double 落 ldc2_w；ldc 索引
+///超 u1 域升格 ldc_w。bipush/sipush/ldc 族文本并入同一语义常量后不再保形。
+IR::Insn constantLoad(IR::ClassSession& session, const ConstSpec& value)
+{
+    IR::Insn in;
+    switch (value.kind) {
+    case ConstSpec::Kind::Int:
+        if (value.num >= -1 && value.num <= 5) {
+            in.op = static_cast<C::Op>(static_cast<ca::i32>(C::Op::ICONST_M1) +
+                                       static_cast<ca::i32>(value.num) + 1);
+            return in;
+        }
+        in.op = C::Op::LDC;
+        in.cp = session.internInteger(static_cast<ca::i32>(value.num));
+        break;
+    case ConstSpec::Kind::Long:
+        if (value.num == 0 || value.num == 1) {
+            in.op = value.num == 0 ? C::Op::LCONST_0 : C::Op::LCONST_1;
+            return in;
+        }
+        in.op = C::Op::LDC2_W;
+        in.cp = session.internLong(value.num);
+        break;
+    case ConstSpec::Kind::Float:
+        if (value.fbits == 0x00000000U || value.fbits == 0x3F800000U ||
+            value.fbits == 0x40000000U) {
+            in.op = value.fbits == 0x00000000U  ? C::Op::FCONST_0
+                    : value.fbits == 0x3F800000U ? C::Op::FCONST_1
+                                                 : C::Op::FCONST_2;
+            return in;
+        }
+        in.op = C::Op::LDC;
+        in.cp = session.internFloatBits(value.fbits);
+        break;
+    case ConstSpec::Kind::Double:
+        if (value.dbits == 0x0000000000000000ULL || value.dbits == 0x3FF0000000000000ULL) {
+            in.op = value.dbits == 0x0000000000000000ULL ? C::Op::DCONST_0 : C::Op::DCONST_1;
+            return in;
+        }
+        in.op = C::Op::LDC2_W;
+        in.cp = session.internDoubleBits(value.dbits);
+        break;
+    default:
+        in.op = C::Op::LDC;
+        in.cp = internConstant(session, value);
+        break;
+    }
+    if (in.op == C::Op::LDC && in.cp > 0xFF) in.op = C::Op::LDC_W;
+    return in;
+}
+
 IR::BsmArg bsmArgOf(IR::ClassSession& session, const ConstSpec& value)
 {
     IR::BsmArg result;
@@ -1121,6 +1173,25 @@ ca::i32 paramSlotTotal(const std::string& descriptor, bool isStatic)
     return (isStatic ? 0 : 1) + static_cast<ca::i32>(jbc::type::paramSlotCount(method));
 }
 
+///@brief 局部变量装载/存储的 _N 短格式（各族 _0.._3 连续；RET 无短格式）。
+C::Op varShortForm(C::Op op, ca::i32 slot)
+{
+    C::Op base;
+    switch (op) {
+    case C::Op::ILOAD:  base = C::Op::ILOAD_0;  break;
+    case C::Op::LLOAD:  base = C::Op::LLOAD_0;  break;
+    case C::Op::FLOAD:  base = C::Op::FLOAD_0;  break;
+    case C::Op::DLOAD:  base = C::Op::DLOAD_0;  break;
+    case C::Op::ALOAD:  base = C::Op::ALOAD_0;  break;
+    case C::Op::ISTORE: base = C::Op::ISTORE_0; break;
+    case C::Op::LSTORE: base = C::Op::LSTORE_0; break;
+    case C::Op::FSTORE: base = C::Op::FSTORE_0; break;
+    case C::Op::DSTORE: base = C::Op::DSTORE_0; break;
+    default:            base = C::Op::ASTORE_0; break;
+    }
+    return static_cast<C::Op>(static_cast<ca::i32>(base) + slot);
+}
+
 class CodeCompiler final
 {
 public:
@@ -1228,17 +1299,13 @@ private:
         IR::Insn    in;
         in.op = op;
         if (low("bipush") || low("sipush")) {
-            in.a = static_cast<ca::i32>(integerValue(*args[0]));
+            ConstSpec spec;
+            spec.kind = ConstSpec::Kind::Int;
+            spec.num  = static_cast<ca::i64>(integerValue(*args[0]));
+            in        = constantLoad(session_, spec);
         }
         else if (low("ldc") || low("ldc_w") || low("ldc2_w")) {
-            const ConstSpec constant = constantValue(args[0], arena_);
-            const ca::u32   index    = internConstant(session_, constant);
-            //宽常量（J/D）恒 LDC2_W；索引超 u1 域自动升格 LDC_W（loadConst 口径）。
-            in.op  = constant.kind == ConstSpec::Kind::Long ||
-                            constant.kind == ConstSpec::Kind::Double
-                        ? C::Op::LDC2_W
-                        : (index <= 0xFF ? C::Op::LDC : C::Op::LDC_W);
-            in.cp  = index;
+            in = constantLoad(session_, constantValue(args[0], arena_));
         }
         else if (low("newarray")) {
             const auto type = args[0]->content();
@@ -1278,6 +1345,10 @@ private:
                               op == C::Op::DSTORE;
             in.a    = variable(args[0], wide);
             in.wide = in.a > 255;
+            if (in.a <= 3 && op != C::Op::RET) {
+                //槽 0..3 一律落 _N 短格式（jblw 写出口径）。
+                in.op = varShortForm(op, static_cast<ca::i32>(in.a));
+            }
         }
         else if (low("iinc")) {
             const ca::i32 index    = variable(args[0], false);
