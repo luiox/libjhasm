@@ -1,8 +1,8 @@
 # libjhasm CI（Linux + Windows）
 #
-# 范围：libjhasm 静态库（暂无 unittest 目标，先做构建门）。
-# 依赖：luiox-repo git 直连包（libjblw/libjbytecode/libca）由 CI 显式注册
-# （与根 xmake.lua 的声明幂等同源）。模式对齐 luiox/libjbc/mjt 仓 CI。
+# 范围：libjhasm 静态库 + 往返冒烟（libjhasm_smoke，assemble/analyze/文本稳定/
+# 字节幂等）。依赖：libca 走 luiox-repo git 直连包（CI 显式注册）；libjbc 是
+# 仓内联包定义（xmake/packages/libjbc.lua），无需注册。模式对齐 luiox/libjbc/mjt 仓 CI。
 
 name: CI
 
@@ -49,6 +49,12 @@ jobs:
       - name: Build
         run: xmake build -y libjhasm
 
+      - name: Smoke (round-trip)
+        run: |
+          xmake f -p linux --with_smoke=y -y
+          xmake build -y libjhasm_smoke
+          xmake run libjhasm_smoke
+
   build-windows:
     name: build (windows)
     runs-on: windows-latest
@@ -82,3 +88,10 @@ jobs:
       - name: Build
         shell: bash
         run: xmake build -y libjhasm
+
+      - name: Smoke (round-trip)
+        shell: bash
+        run: |
+          xmake f -p windows --with_smoke=y -y
+          xmake build -y libjhasm_smoke
+          xmake run libjhasm_smoke
