@@ -305,14 +305,17 @@ void checkInsnKinds(const C::ClassFile& cf, const jbc::analysis::MethodSig& sig,
         const std::string_view got = descAt(frame, 0);
         expectRefTop(got, "areturn");
         // 返回值互赋：栈顶须可赋给方法描述符的返回类型（引用返回才查；
-        // prim 返回类别由 IRETURN 族承载）。
+        // prim 返回类别由 IRETURN 族承载）。返回类型是签名契约，数组形态
+        // 不吃赋值协变（strict 档比 JVM 验证器更严：协变捷径按约报错）。
         const ca::usize close = sig.desc.find(')');
         if (!got.empty() && close != std::string_view::npos) {
             const std::string_view ret = sig.desc.substr(close + 1);
-            if (!ret.empty() && (ret.front() == 'L' || ret.front() == '[') &&
-                !refCompatible(got, ret, inheritance))
-                fail("areturn of " + std::string(got) + " is not assignable to " +
-                     std::string(ret));
+            if (!ret.empty() && (ret.front() == 'L' || ret.front() == '[')) {
+                const bool exactArray = got.front() == '[' && ret.front() == '[';
+                if (exactArray ? got != ret : !refCompatible(got, ret, inheritance))
+                    fail("areturn of " + std::string(got) + " is not assignable to " +
+                         std::string(ret));
+            }
         }
         break;
     }
