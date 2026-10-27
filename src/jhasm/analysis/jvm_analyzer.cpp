@@ -162,6 +162,18 @@ bool memberDescOf(const C::ClassFile& cf, ca::u32 cpIndex, std::string_view& des
     return true;
 }
 
+/// @brief Memberref → owner 类内部名（非成员引用/类名缺失失败）。
+bool memberOwnerOf(const C::ClassFile& cf, ca::u32 cpIndex, std::string_view& owner)
+{
+    if (!cf.cp.valid(cpIndex)) return false;
+    const C::ConstantPool::Entry& entry = cf.cp.at(cpIndex);
+    if (entry.tag != C::CpTag::Fieldref && entry.tag != C::CpTag::Methodref &&
+        entry.tag != C::CpTag::InterfaceMethodref)
+        return false;
+    owner = cf.className(entry.a);
+    return !owner.empty();
+}
+
 /// @brief 引用名互赋（JVM 赋值兼容语义）：同名 / null 底 / 数组同维协变 /
 ///        checker 子类判定；名字未知一律放行（保守面）。
 bool refCompatible(std::string_view value, std::string_view target,
@@ -268,6 +280,19 @@ void checkInsnKinds(const C::ClassFile& cf, const jbc::analysis::MethodSig& sig,
         if (insn.op != C::Op::INVOKESTATIC) {
             const std::string_view receiver = descAt(frame, fromTop);
             expectRefTop(receiver, "invoke receiver");
+            // 接收者名字互赋（虚分发族）：receiver 须可赋给 CP owner 类。
+            // INVOKESPECIAL 不查——<init> 的 uninit 槽与 super 调用的 this
+            // 接收者相对 owner 是合法非同形态（精确比对会误报构造器链与
+            // super.m() 这类 javac 常规形态）。
+            if (!receiver.empty() && insn.op != C::Op::INVOKESPECIAL) {
+                std::string_view owner;
+                if (memberOwnerOf(cf, insn.cp, owner) && !owner.empty() && owner.front() != '[') {
+                    const std::string want = "L" + std::string(owner) + ";";
+                    if (!refCompatible(receiver, want, inheritance))
+                        fail("invoke receiver " + std::string(receiver) +
+                             " is not assignable to " + want);
+                }
+            }
         }
     };
 
@@ -276,7 +301,21 @@ void checkInsnKinds(const C::ClassFile& cf, const jbc::analysis::MethodSig& sig,
     case C::Op::LRETURN: expectTop(descAt(frame, 0), "lreturn", "J"); break;
     case C::Op::FRETURN: expectTop(descAt(frame, 0), "freturn", "F"); break;
     case C::Op::DRETURN: expectTop(descAt(frame, 0), "dreturn", "D"); break;
-    case C::Op::ARETURN: expectRefTop(descAt(frame, 0), "areturn"); break;
+    case C::Op::ARETURN: {
+        const std::string_view got = descAt(frame, 0);
+        expectRefTop(got, "areturn");
+        // 返回值互赋：栈顶须可赋给方法描述符的返回类型（引用返回才查；
+        // prim 返回类别由 IRETURN 族承载）。
+        const ca::usize close = sig.desc.find(')');
+        if (!got.empty() && close != std::string_view::npos) {
+            const std::string_view ret = sig.desc.substr(close + 1);
+            if (!ret.empty() && (ret.front() == 'L' || ret.front() == '[') &&
+                !refCompatible(got, ret, inheritance))
+                fail("areturn of " + std::string(got) + " is not assignable to " +
+                     std::string(ret));
+        }
+        break;
+    }
     case C::Op::RETURN:
         if (!sig.desc.empty() && sig.desc.find(")V") != sig.desc.size() - 2)
             fail("return in method with non-void return type");
@@ -307,55 +346,38 @@ void checkInsnKinds(const C::ClassFile& cf, const jbc::analysis::MethodSig& sig,
     case C::Op::MONITORENTER:
     case C::Op::MONITOREXIT: expectRefTop(descAt(frame, 0), "instruction"); break;
     case C::Op::GETFIELD: {
-        bool ok = false;
-        if (hasMember) {
-            const ca::usize close = memberDesc.find(')');
-            if (close != std::string_view::npos) {
-                const std::string_view d = memberDesc.substr(close + 1);
-                ok                       = true;
-                const std::string_view receiver = descAt(frame, d == "J" || d == "D" ? 2 : 1);
-                expectRefTop(receiver, "field access");
-            }
-        }
-        (void)ok;
+        // 字段引用描述符即字段描述符（无方法描述符的 ')' 参数区分隔）。
+        // 到达帧栈顶就是 receiver（字段值尚未压栈）。
+        if (hasMember) expectRefTop(descAt(frame, 0), "field access");
         break;
     }
     case C::Op::PUTFIELD: {
         if (hasMember) {
-            const ca::usize close = memberDesc.find(')');
-            if (close != std::string_view::npos) {
-                const std::string_view d     = memberDesc.substr(close + 1);
-                const ca::usize        slots = (d == "J" || d == "D") ? 2u : 1u;
-                const std::string_view value = descAt(frame, 0);
-                if (!value.empty()) {
-                    if (d.front() != 'L' && d.front() != '[') {
-                        expectTop(value, "field store", d);
-                    }
-                    else if (!refCompatible(value, d, inheritance)) {
-                        fail("field store of " + std::string(value) + " into " +
-                             std::string(d));
-                    }
+            const ca::usize        slots = (memberDesc == "J" || memberDesc == "D") ? 2u : 1u;
+            const std::string_view value = descAt(frame, 0);
+            if (!value.empty()) {
+                if (memberDesc.front() != 'L' && memberDesc.front() != '[') {
+                    expectTop(value, "field store", memberDesc);
                 }
-                const std::string_view receiver = descAt(frame, slots);
-                expectRefTop(receiver, "field access");
+                else if (!refCompatible(value, memberDesc, inheritance)) {
+                    fail("field store of " + std::string(value) + " into " +
+                         std::string(memberDesc));
+                }
             }
+            expectRefTop(descAt(frame, slots), "field access");
         }
         break;
     }
     case C::Op::PUTSTATIC: {
         if (hasMember) {
-            const ca::usize close = memberDesc.find(')');
-            if (close != std::string_view::npos) {
-                const std::string_view d = memberDesc.substr(close + 1);
-                const std::string_view value = descAt(frame, 0);
-                if (!value.empty()) {
-                    if (d.front() != 'L' && d.front() != '[') {
-                        expectTop(value, "field store", d);
-                    }
-                    else if (!refCompatible(value, d, inheritance)) {
-                        fail("field store of " + std::string(value) + " into " +
-                             std::string(d));
-                    }
+            const std::string_view value = descAt(frame, 0);
+            if (!value.empty()) {
+                if (memberDesc.front() != 'L' && memberDesc.front() != '[') {
+                    expectTop(value, "field store", memberDesc);
+                }
+                else if (!refCompatible(value, memberDesc, inheritance)) {
+                    fail("field store of " + std::string(value) + " into " +
+                         std::string(memberDesc));
                 }
             }
         }
