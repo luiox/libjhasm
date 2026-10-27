@@ -514,17 +514,6 @@ const char* newArrayType(ca::i32 operand)
     }
 }
 
-std::string componentOf(std::string_view arrayName)
-{
-    //anewarray 的 CP 名是完整数组描述符；文本面打印的是组件类型（旧栈
-    //TypeInsnNode.desc 语义）：剥一层 '['，类组件再剥 L;，数组组件保持描述符。
-    if (arrayName.empty() || arrayName.front() != '[')
-        throw std::invalid_argument("Not an array class name");
-    auto component = arrayName.substr(1);
-    if (!component.empty() && component.front() == 'L' && component.back() == ';')
-        component = component.substr(1, component.size() - 2);
-    return std::string(component);
-}
 
 std::string instruction(const C::ClassFile& cf, const C::BootstrapMethodsAttr* bsm,
                         const IR::Insn& in, const MethodLabels& labels)
@@ -586,9 +575,11 @@ std::string instruction(const C::ClassFile& cf, const C::BootstrapMethodsAttr* b
         case C::Op::NEW:
         case C::Op::CHECKCAST:
         case C::Op::INSTANCEOF:
-            return opcode + " " + literal(cf.cp.utf8Of(cf.cp.at(in.cp).a));
         case C::Op::ANEWARRAY:
-            return opcode + " " + literal(componentOf(cf.cp.utf8Of(cf.cp.at(in.cp).a)));
+            // anewarray 的 CP 名按原样打印：JVMS 口径是组件类型；旧栈自产
+            // 字节是数组描述符——剥 '[' 会把组件形态误判为非法，装配侧两种
+            // 形态都接受（描述符名进 anewarray 语义即组件为该数组类）。
+            return opcode + " " + literal(cf.cp.utf8Of(cf.cp.at(in.cp).a));
         case C::Op::MULTIANEWARRAY:
             return opcode + " " + literal(cf.cp.utf8Of(cf.cp.at(in.cp).a)) + " " +
                    std::to_string(in.a);

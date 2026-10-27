@@ -1309,14 +1309,11 @@ private:
         else if (low("new") || low("anewarray") || low("checkcast") || low("instanceof")) {
             const auto typeName = internalNameOf(
                 *std::static_pointer_cast<ast::Identifier>(args[0]));
-            if (low("new") || low("checkcast") || low("instanceof")) {
-                in.cp = session_.internClass(typeName);
-            }
-            else {
-                const auto component =
-                    typeName.front() == '[' ? typeName : "L" + typeName + ";";
-                in.cp = session_.internClass("[" + component);
-            }
+            // JVMS 6.5 anewarray：CP Class 载组件类型（javac 语料同形，
+            // `anewarray java/lang/String` 落 `java/lang/String`）。旧栈
+            // TypeInsnNode.desc 口径落的是数组描述符，运行时会多出一维，
+            // 本仓不再沿用；disassemble 面对两种形态都按原样打印。
+            in.cp = session_.internClass(typeName);
         }
         else if (isVarOpcode(op)) {
             const bool wide = op == C::Op::LLOAD || op == C::Op::DLOAD || op == C::Op::LSTORE ||
