@@ -55,6 +55,9 @@ package("libjbc")
     -- 静态方法恒带 this 行）；.parameters 源面依赖本修复。
     add_versions("0.4.18", "29f6ef436461fa48ca27661778ffb8f139633bed") -- v0.4.18  2026-10-26
 
+    -- 0.4.22 = 精确档异常边发射域放宽到范围内可达指令（JVM 校验器保守口径，JVMS 4.10.1.4）：handler 可达 ⟺ 范围内至少一条可达指令，覆盖仅不可抛指令的 try 形态不再缺 handler 帧。
+    add_versions("0.4.22", "a408506203aaba7f74cdf588885187d3a49b0bd0") -- PR #19 定版合入头  2026-10-28
+
     -- 嵌套 libca 直接钉到本仓单源版本（见文件头链接说明）。
     add_deps("libca " .. LUIOX_LIBCA_VERSION, {configs = {modules = LUIOX_LIBCA_MODULES}})
 
