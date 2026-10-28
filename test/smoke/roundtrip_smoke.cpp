@@ -4,6 +4,8 @@
 //   2. disassemble 文本是规范形式：assemble(T0) 的反汇编 == T0，且字节稳定；
 //   3. 真实 classfile 语料（test/smoke/corpus）文本稳定往返。
 #include <cstdio>
+#include <cstdlib>
+#include <filesystem>
 #include <fstream>
 #include <string>
 #include <vector>
@@ -211,6 +213,41 @@ bool textStable(const std::vector<ca::u8>& bytes, std::vector<ca::u8>& rebuilt,
     return stable;
 }
 
+
+//JVM 加载门载体（#3 形态去特征）：try 范围只覆盖不可抛指令（iload/ifeq/
+//goto），handler 段首为 nop；handler 本体只有异常边进入。装配-反汇编往返
+//不验 JVM 语义，SMT 缺 handler 入口帧类缺陷只有真实类加载能拦。
+const char* kGateSource = R"jasm(.sourcefile "Gate.jasm"
+.super java/lang/Object
+.class public super Gate {
+
+    .method public static probe (I)V {
+        exceptions: { { L0, L1, L3, java/lang/Exception } },
+        code: {
+        L0:
+            iload 0
+            ifeq L2
+        L1:
+            goto L2
+        L3:
+            nop
+            pop
+            return
+        L2:
+            return
+        }
+    }
+
+    .method public static main ([Ljava/lang/String;)V {
+        code: {
+            iconst_0
+            invokestatic Gate.probe (I)V
+            return
+        }
+    }
+}
+)jasm";
+
 }   //namespace
 
 int main(int argc, char** argv)
@@ -266,6 +303,45 @@ int main(int argc, char** argv)
     }
     else {
         printf("[skip] corpus %s missing\n", corpus.c_str());
+    }
+
+    //5. JVM 加载门：装配产物经 java -Xverify:all 真实加载验收。java 缺席
+    //   时跳过（JDK 缺失环境不阻塞其余 smoke 契约）。
+    {
+        auto gate = jhasm::assemble(utf16s("Gate.jasm"), utf16s(kGateSource).ref());
+        if (!gate.has_value()) {
+            check(false, "gate assemble");
+            for (const auto& error : gate.errors())
+                printf("       %s\n", narrow(error.message()).c_str());
+        }
+        else {
+            const int javaProbe =
+#ifdef _WIN32
+                std::system("java -version >nul 2>&1");
+#else
+                std::system("java -version >/dev/null 2>&1");
+#endif
+            if (javaProbe != 0) {
+                printf("[skip] java not on PATH; JVM load gate skipped\n");
+            }
+            else {
+                namespace fs = std::filesystem;
+                const fs::path dir = fs::temp_directory_path() / "jhasm_gate_smoke";
+                std::error_code ec;
+                fs::remove_all(dir, ec);
+                fs::create_directories(dir);
+                {
+                    std::ofstream out(dir / "Gate.class", std::ios::binary);
+                    out.write(reinterpret_cast<const char*>(gate.get()->bytes.data()),
+                              static_cast<std::streamsize>(gate.get()->bytes.size()));
+                }
+                const std::string cmd =
+                    "java -Xverify:all -cp " + dir.string() + " Gate";
+                const int rc = std::system(cmd.c_str());
+                check(rc == 0, "jvm load gate (java -Xverify:all)");
+                fs::remove_all(dir, ec);
+            }
+        }
     }
 
     printf(failures == 0 ? "SMOKE PASS\n" : "SMOKE FAIL (%d)\n", failures);
