@@ -25,7 +25,7 @@ includes("xmake/packages/libjbc.lua")
 set_languages("cxx17")
 add_rules("mode.debug", "mode.release")
 
-add_requires("libjbc 0.4.18")
+add_requires("libjbc 0.4.22")
 add_requires("libca " .. LUIOX_LIBCA_VERSION, {configs = {modules = LUIOX_LIBCA_MODULES}})
 
 option("with_tests")
