@@ -250,6 +250,24 @@ const char* kGateSource = R"jasm(.sourcefile "Gate.jasm"
 
 }   //namespace
 
+//孤立代理语料：一个常量携带孤立低代理（U+DC31 的 CESU-8 三字节形），
+//另一个携带合法代理对（U+1F037）——锁「孤立落 \uXXXX、成对保持原样」
+//的双形态契约。
+const char* kLoneSource = R"jasm(.super java/lang/Object
+.class public super Lone {
+
+    .method public static shout ()V {
+        code: {
+            ldc "\uDC31"
+            pop
+            ldc "\uD83B\uDC37"
+            pop
+            return
+        }
+    }
+}
+)jasm";
+
 int main(int argc, char** argv)
 {
     //1. assemble
@@ -286,6 +304,35 @@ int main(int argc, char** argv)
     std::vector<ca::u8> rebuilt;
     if (textStable(bytes, rebuilt, "inline")) {
         checkBytesEqual(bytes, rebuilt, "inline");
+    }
+
+    //3b. 孤立代理（lone surrogate）：CP Utf8 携带 CESU-8 代理三字节形时，
+    //    Utf16String 承载不了孤立单元的标准 UTF-8 重编码（to_utf8_string
+    //    显式拒绝）——文本面落 \uXXXX 转义（合法代理对保持增补平面字符
+    //    呈现），装配侧 unescape + modifiedUtf8 逐位还原，往返字节稳定。
+    {
+        auto lone = jhasm::assemble(utf16s("Lone.jasm"), utf16s(kLoneSource).ref());
+        if (!lone.has_value()) {
+            check(false, "lone surrogate assemble");
+            for (const auto& error : lone.errors())
+                printf("       %s\n", narrow(error.message()).c_str());
+        }
+        else {
+            const std::vector<ca::u8>& loneBytes = lone.get()->bytes;
+            bool stored = false;
+            for (ca::usize i = 0; i + 2 < loneBytes.size(); ++i) {
+                if (loneBytes[i] == 0xED && loneBytes[i + 1] == 0xB0 &&
+                    loneBytes[i + 2] == 0xB1) {
+                    stored = true;
+                    break;
+                }
+            }
+            check(stored, "lone surrogate stored as CESU-8 ED B0 B1");
+            std::vector<ca::u8> loneRebuilt;
+            if (textStable(loneBytes, loneRebuilt, "lone")) {
+                checkBytesEqual(loneBytes, loneRebuilt, "lone");
+            }
+        }
     }
 
     //4. 真实 classfile 语料：文本稳定往返；javac 常量池编排与本项目写入器

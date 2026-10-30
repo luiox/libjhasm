@@ -88,6 +88,26 @@ ca::str::Utf16String EscapeUtil::escape(ca::str::Utf16StringRef string, bool lit
     builder.reserve(string.length());
     for (ca::usize index = 0; index < string.length(); ++index) {
         const ca::u16 unit = string.char_at(index).unit();
+        //孤立代理单元（无高低配对的 D800-DFFF）无法重编码为标准 UTF-8
+        //（Utf16String::to_utf8_string 显式拒绝），落 \uXXXX 转义文本；汇编侧
+        //unescape + modifiedUtf8 对孤立代理逐位还原 CESU-8 三字节形。合法
+        //代理对保持原样输出（调用方 to_utf8_string 组合为增补平面字符，既有
+        //呈现不变），两个单元一并消费。
+        const bool paired =
+            unit >= 0xD800 && unit <= 0xDBFF && index + 1 < string.length() &&
+            string.char_at(index + 1).unit() >= 0xDC00 &&
+            string.char_at(index + 1).unit() <= 0xDFFF;
+        if (unit >= 0xD800 && unit <= 0xDFFF) {
+            if (paired) {
+                builder.append(Char16(unit));
+                builder.append(Char16(string.char_at(index + 1).unit()));
+                ++index;
+            }
+            else {
+                append_unicode_escape(builder, unit);
+            }
+            continue;
+        }
         if ((literal && uses_literal_unicode_escape(unit)) || uses_unicode_escape(unit)) {
             append_unicode_escape(builder, unit);
             continue;
