@@ -23,7 +23,7 @@ struct JvmAnalysisResult final
     std::vector<MethodAnalysis> methods;
 };
 
-///@brief 对 classfile bytes 执行 JVM 类型数据流分析并返回 owning frame 快照。
+/// @brief 对 classfile bytes 执行 JVM 类型数据流分析并返回 owning frame 快照。
 class JvmAnalyzer final
 {
 public:

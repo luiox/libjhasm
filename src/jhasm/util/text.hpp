@@ -12,7 +12,7 @@
 
 namespace jhasm::util {
 
-///@brief UTF-16 文本与 ASCII 字面严格相等（长度一致逐单元比对）。
+/// @brief UTF-16 文本与 ASCII 字面严格相等（长度一致逐单元比对）。
 inline bool equals(ca::str::Utf16StringRef value, const char* ascii) noexcept
 {
     ca::usize index = 0;
@@ -24,7 +24,7 @@ inline bool equals(ca::str::Utf16StringRef value, const char* ascii) noexcept
     return index == value.length();
 }
 
-///@brief UTF-8 窄串 → UTF-16（错误消息/诊断文本出水面用）。
+/// @brief UTF-8 窄串 → UTF-16（错误消息/诊断文本出水面用）。
 inline ca::str::Utf16String utf16(const std::string& value)
 {
     return ca::str::Utf16String::from_utf8_string(ca::str::Utf8StringRef::from_data(

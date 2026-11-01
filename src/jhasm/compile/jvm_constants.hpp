@@ -27,22 +27,22 @@ struct ConstSpec final
     std::vector<ConstSpec>    dynamicArgs;
 };
 
-///@brief AST 节点 → 方法句柄规格（快捷名或 [kind, path, descriptor] 三元数组）。
+/// @brief AST 节点 → 方法句柄规格（快捷名或 [kind, path, descriptor] 三元数组）。
 IR::MethodHandleSpec methodHandle(const ast::ElementPtr& value, SpecArena& arena);
 
-///@brief AST 节点 → 常量规格（数字/字符串/字符/布尔/NaN/Infinity/类型字面/
+/// @brief AST 节点 → 常量规格（数字/字符串/字符/布尔/NaN/Infinity/类型字面/
 ///       方法句柄/indy 动态常量）。
 ConstSpec constantValue(const ast::ElementPtr& value, SpecArena& arena);
 
-///@brief 常量规格 → CP 索引（语义 intern：命中既有池不膨胀）。
+/// @brief 常量规格 → CP 索引（语义 intern：命中既有池不膨胀）。
 ca::u32 internConstant(IR::ClassSession& session, const ConstSpec& value);
 
-///@brief 常量装载规范化落码（沿旧栈 jblw 写出口径）：int/float 一律落 ldc
-///（索引超 u1 域升格 ldc_w），long/double 一律落 ldc2_w（cat2 常量 JVM 只认
-///ldc2_w）。bipush/sipush/ldc 族文本并入同一语义常量后不再保形。
+/// @brief 常量装载规范化落码（沿旧栈 jblw 写出口径）：int/float 一律落 ldc
+/// （索引超 u1 域升格 ldc_w），long/double 一律落 ldc2_w（cat2 常量 JVM 只认
+/// ldc2_w）。bipush/sipush/ldc 族文本并入同一语义常量后不再保形。
 IR::Insn constantLoad(IR::ClassSession& session, const ConstSpec& value);
 
-///@brief 常量规格 → BSM 参数（Dynamic 族递归落嵌套 BSM）。
+/// @brief 常量规格 → BSM 参数（Dynamic 族递归落嵌套 BSM）。
 IR::BsmArg bsmArgOf(IR::ClassSession& session, const ConstSpec& value);
 
 }   //namespace jhasm::compile

@@ -4,7 +4,7 @@
 
 namespace jhasm::analysis {
 
-///@brief 为 JVM 类型分析提供不依赖类加载器的继承关系查询。
+/// @brief 为 JVM 类型分析提供不依赖类加载器的继承关系查询。
 class InheritanceChecker
 {
 public:
@@ -16,7 +16,7 @@ public:
                                                  ca::str::Utf8StringRef second) const = 0;
 };
 
-///@brief 无 classpath 时使用的保守继承查询，与上游 EmptyInheritanceChecker 对齐。
+/// @brief 无 classpath 时使用的保守继承查询，与上游 EmptyInheritanceChecker 对齐。
 class EmptyInheritanceChecker final : public InheritanceChecker
 {
 public:

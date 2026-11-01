@@ -73,7 +73,7 @@ constexpr ca::i32 T_SHORT = 9;
 constexpr ca::i32 T_INT = 10;
 constexpr ca::i32 T_LONG = 11;
 
-///@brief 编译诊断上下文（thread_local）：编译面是同步栈式调用，compileClass
+/// @brief 编译诊断上下文（thread_local）：编译面是同步栈式调用，compileClass
 ///       在进入成员、CodeCompiler::emit 在发射指令前写入，fail() 与顶层 catch
 ///       读取——错误归属成员、Error 保留 jasm 源位置。location 借用 AST 节点，
 ///       只在 compile() 调用栈内有效，DiagGuard 保证任何退出路径清空。
@@ -89,7 +89,7 @@ inline DiagScope& diagScope()
     return scope;
 }
 
-///@brief compile() 入口挂 RAII 清空：不向调用外借出悬垂 AST 指针。
+/// @brief compile() 入口挂 RAII 清空：不向调用外借出悬垂 AST 指针。
 class DiagGuard final
 {
 public:
@@ -142,7 +142,7 @@ T require(ca::core::Result<T, E> result, const char* stage)
     }
 }
 
-///@brief 规格字符串驻留仓：libjbc 的 MethodHandleSpec/SemAnnotation/BsmArg
+/// @brief 规格字符串驻留仓：libjbc 的 MethodHandleSpec/SemAnnotation/BsmArg
 ///      一律持 string_view（借用型规格），而 Jasm 文本面的名字/描述符都是
 ///      即时临时串。构建侧把全部借用串落此仓，仓的生命周期覆盖到同步
 ///      intern/attach 调用返回为止。
@@ -159,7 +159,7 @@ private:
     std::deque<std::string> owned_;
 };
 
-///@brief UTF-16 → JVM modified UTF-8（JVMS 4.4.7）：NUL 走 0xC0 0x80，补充字符
+/// @brief UTF-16 → JVM modified UTF-8（JVMS 4.4.7）：NUL 走 0xC0 0x80，补充字符
 ///      按代理对拆成两个三字节单元（CESU-8 形态）。CP Utf8 载体的唯一编码口径，
 ///      与 printer 侧 modifiedUtf16 解码器 1:1 往返；ASCII 输入字节不变。
 inline std::string modifiedUtf8(ca::str::Utf16StringRef value)
@@ -244,7 +244,7 @@ inline ca::u32 access(const ast::Modifiers& modifiers)
     return result & 0xFFFF;
 }
 
-///@brief 标识符 → 类内部名：L..; 描述符形态剥壳；数组描述符（[ 开头）与
+/// @brief 标识符 → 类内部名：L..; 描述符形态剥壳；数组描述符（[ 开头）与
 ///       普通内部名原样保留。
 inline std::string internalNameOf(const ast::Identifier& value)
 {
@@ -255,7 +255,7 @@ inline std::string internalNameOf(const ast::Identifier& value)
     return name;
 }
 
-///@brief 类型的字段描述符形态（注解 'c' 元素与注解类型落 CP 用）。
+/// @brief 类型的字段描述符形态（注解 'c' 元素与注解类型落 CP 用）。
 inline std::string descriptorOf(const ast::Identifier& value)
 {
     const auto name = internalNameOf(value);
@@ -293,7 +293,7 @@ inline std::pair<ca::u64, ca::f64> doubleWords(ca::f64 value)
     return {bits, value};
 }
 
-///@brief 方法参数槽位总数（this 行 + 各参数槽宽）；maxLocals 初始化与
+/// @brief 方法参数槽位总数（this 行 + 各参数槽宽）；maxLocals 初始化与
 ///       方法体编译器共用同一口径。
 inline ca::i32 paramSlotTotal(const std::string& descriptor, bool isStatic)
 {

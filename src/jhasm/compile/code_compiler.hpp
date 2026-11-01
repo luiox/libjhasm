@@ -10,7 +10,7 @@
 
 namespace jhasm::compile {
 
-///@brief 方法体编译器：逐条发射指令到 CodeUnit 的 CodeDom，标签与行号延迟
+/// @brief 方法体编译器：逐条发射指令到 CodeUnit 的 CodeDom，标签与行号延迟
 ///       绑定到下一条落码指令；行号行（insn 句柄 + 行号）由 lineRows 带出，
 ///       lower 后由 finishBody 换算成 pc 落 LNT。
 class CodeCompiler final
@@ -21,7 +21,7 @@ public:
 
     void compile();
 
-    ///@brief 行号行（insn 句柄 + 行号）；lower 后由 finishBody 换算成 pc 落 LNT。
+    /// @brief 行号行（insn 句柄 + 行号）；lower 后由 finishBody 换算成 pc 落 LNT。
     const std::vector<std::pair<IR::InsnId, ca::i32>>& lineRows() const noexcept
     {
         return lineRows_;
@@ -49,11 +49,11 @@ private:
     ca::i32                                       nextVariable_ = 0;
 };
 
-///@brief Strict 帧计算 → SMT 生成 → maxes 采用 → lower → SMT/LNT 挂回。
+/// @brief Strict 帧计算 → SMT 生成 → maxes 采用 → lower → SMT/LNT 挂回。
 ///
-///全新方法体没有现成 pc：先 lower 一轮让 DOM 拿到真实 srcPc（帧引擎的
-///Uninitialized 载荷与 SMT 的目标/偏移都以 pc 计），再计算帧与生成 SMT，
-///最后第二轮 lower 只为提交 maxes（字节不变 → 走 maxesChanged 快路径）。
+/// 全新方法体没有现成 pc：先 lower 一轮让 DOM 拿到真实 srcPc（帧引擎的
+/// Uninitialized 载荷与 SMT 的目标/偏移都以 pc 计），再计算帧与生成 SMT，
+/// 最后第二轮 lower 只为提交 maxes（字节不变 → 走 maxesChanged 快路径）。
 void finishBody(IR::ClassSession& session, IR::MethodId method, IR::CodeUnit& unit,
                 const std::vector<std::pair<IR::InsnId, ca::i32>>& lineRows,
                 const JvmCompilerOptions& options, const std::string& name,

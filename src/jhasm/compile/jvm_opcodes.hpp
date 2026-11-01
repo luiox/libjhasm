@@ -12,7 +12,7 @@ namespace jhasm::compile {
 
 namespace C = jbc::core;
 
-///@brief jasm 助记符 → Op；未知助记符抛 std::invalid_argument（带助记符文本）。
+/// @brief jasm 助记符 → Op；未知助记符抛 std::invalid_argument（带助记符文本）。
 C::Op opcode(ca::str::Utf16StringRef name);
 
 }   //namespace jhasm::compile

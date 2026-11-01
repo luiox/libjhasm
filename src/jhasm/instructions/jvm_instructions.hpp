@@ -29,7 +29,7 @@ struct InstructionSpec final
     std::vector<OperandKind> operands;
 };
 
-///@brief HotSpot/JVM Jasm 指令签名与 operand 校验表。
+/// @brief HotSpot/JVM Jasm 指令签名与 operand 校验表。
 class JvmInstructions final
 {
 public:

@@ -40,10 +40,10 @@ enum class ElementKind : ca::u8
 class Element;
 using ElementPtr = std::shared_ptr<Element>;
 
-///@brief Jasm AST 的 RTTI-free 拥有型根节点。
+/// @brief Jasm AST 的 RTTI-free 拥有型根节点。
 ///
-///节点复制 Token，因此 content/location 在输入、Tokenizer 和 parser 销毁后仍有效。
-///children 由节点共享持有，parent 不保存反向 owning 引用。
+/// 节点复制 Token，因此 content/location 在输入、Tokenizer 和 parser 销毁后仍有效。
+/// children 由节点共享持有，parent 不保存反向 owning 引用。
 class Element
 {
 public:

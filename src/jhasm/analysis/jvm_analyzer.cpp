@@ -21,13 +21,13 @@ ca::str::Utf8String owning(std::string_view value)
                                           value.size());
 }
 
-///@brief InheritanceChecker → libjbc Strict 帧引擎的引用合并策略。
+/// @brief InheritanceChecker → libjbc Strict 帧引擎的引用合并策略。
 ///
-///同名引用合并为自身；跨类引用经 InheritanceChecker 求公共父类——与旧栈
-///HierarchyVerifier::merge 的可观测语义一致（空 checker 回落 Object）。
-///合并产物的名字由本对象自持（帧域对 resolver 返回的 VType.name 只借用，
-///寿命约定与 libjbc 测试栈的 StubResolver 同构：resolver 活过 compute 与
-///快照期）。
+/// 同名引用合并为自身；跨类引用经 InheritanceChecker 求公共父类——与旧栈
+/// HierarchyVerifier::merge 的可观测语义一致（空 checker 回落 Object）。
+/// 合并产物的名字由本对象自持（帧域对 resolver 返回的 VType.name 只借用，
+/// 寿命约定与 libjbc 测试栈的 StubResolver 同构：resolver 活过 compute 与
+/// 快照期）。
 class InheritanceResolver final : public jbc::analysis::ITypeResolver
 {
 public:
@@ -58,10 +58,10 @@ private:
     std::deque<std::string>   owned_;
 };
 
-///@brief VType → jhasm 拥有型 Value（描述符串）。
+/// @brief VType → jhasm 拥有型 Value（描述符串）。
 ///
-///uninitNewOffset 指到产生方 new 指令的类名（帧域 VType 不携带该名，从
-///方法体按 pc 反查）；thisName 用于 UninitThis 槽。
+/// uninitNewOffset 指到产生方 new 指令的类名（帧域 VType 不携带该名，从
+/// 方法体按 pc 反查）；thisName 用于 UninitThis 槽。
 Value snapshot(const jbc::analysis::VType& value,
                const std::unordered_map<ca::u32, std::string_view>& newClasses,
                std::string_view thisName)
@@ -332,7 +332,7 @@ void checkInsnKinds(const C::ClassFile& cf, const jbc::analysis::MethodSig& sig,
     case C::Op::IASTORE: case C::Op::LASTORE: case C::Op::FASTORE: case C::Op::DASTORE:
     case C::Op::BASTORE: case C::Op::CASTORE: case C::Op::SASTORE:
         expectRefTop(descAt(frame, 0), "array store");    ///< value（prim 数组元素
-                                                          ///< 类别由引擎宽度面承载）
+                                                          /// < 类别由引擎宽度面承载）
         expectTop(descAt(frame, 1), "array store", "I");  ///< index
         expectRefTop(descAt(frame, 2), "array store");    ///< arrayref
         break;

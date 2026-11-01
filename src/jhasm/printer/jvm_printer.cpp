@@ -47,13 +47,13 @@ using jhasm::util::ACC_VARARGS;
 using jhasm::util::ACC_VOLATILE;
 using jhasm::util::utf16;
 
-///@brief 成员上下文重抛：打印面无源位置，错误归属靠成员前缀表达。
+/// @brief 成员上下文重抛：打印面无源位置，错误归属靠成员前缀表达。
 [[noreturn]] void rethrowIn(const std::string& member, const std::exception& error)
 {
     throw std::invalid_argument("in " + member + ": " + error.what());
 }
 
-///@brief JVM modified UTF-8 → UTF-16（JVMS 4.4.7）：0xC0 0x80 解码为 NUL，
+/// @brief JVM modified UTF-8 → UTF-16（JVMS 4.4.7）：0xC0 0x80 解码为 NUL，
 ///      代理对以两个三字节单元（CESU-8 形态）顺序落两个 char16。字节序一致
 ///      往返由编码侧 EscapeUtil 负责，此处只管解码容错（畸形字节落 '?'）。
 ca::str::Utf16String modifiedUtf16(std::string_view value)

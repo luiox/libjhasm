@@ -177,7 +177,7 @@ void checkBytesEqual(const std::vector<ca::u8>& expected, const std::vector<ca::
     }
 }
 
-///@brief disassemble → assemble → disassemble：断言文本稳定，返回再装配 bytes。
+/// @brief disassemble → assemble → disassemble：断言文本稳定，返回再装配 bytes。
 bool textStable(const std::vector<ca::u8>& bytes, std::vector<ca::u8>& rebuilt,
                 const std::string& tag)
 {
