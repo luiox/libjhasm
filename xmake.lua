@@ -27,6 +27,7 @@ add_rules("mode.debug", "mode.release")
 
 add_requires("libjbc 0.4.23")
 add_requires("libca " .. LUIOX_LIBCA_VERSION, {configs = {modules = LUIOX_LIBCA_MODULES}})
+add_requires("gtest")
 
 option("with_tests")
     set_default(false)
@@ -57,6 +58,28 @@ if has_config("with_smoke") then
         set_kind("binary")
         add_deps("libjhasm")
         add_files("test/smoke/roundtrip_smoke.cpp")
+        if is_plat("windows") then
+            add_cxflags("/utf-8", {tools = "cl"})
+        end
+end
+
+-- gtest 面随 with_tests 门控：默认配置不定义本 target。
+if has_config("with_tests") then
+    target("libjhasm_unittest")
+        set_kind("binary")
+        set_default(false)
+
+        add_deps("libjhasm")
+        -- libjbc 是 libjhasm 的私有依赖；unittest 的码表漂移断言要直接遍历
+        -- mnemonicOf 全量码表，显式吃包补齐头文件与符号。
+        add_packages("libjbc")
+        add_packages("gtest")
+        add_files("test/unittest/main.cpp")
+        add_files("test/unittest/opcode_table_test.cpp")
+        add_files("test/unittest/error_path_test.cpp")
+        add_includedirs("src")
+        set_rundir("$(projectdir)")
+
         if is_plat("windows") then
             add_cxflags("/utf-8", {tools = "cl"})
         end
