@@ -133,6 +133,8 @@ ca::i32 CodeCompiler::variable(const ast::ElementPtr& value, bool wide)
 
 void CodeCompiler::emit(const ast::InstructionPtr& item)
 {
+    //指令级诊断位置：成员上下文之上细化到当前指令（fail/顶层 catch 读取）。
+    if (const auto* location = item->location()) diagScope().location = location;
     if (item->getType() == ast::ElementKind::LABEL) {
         pendingLabels_.push_back(label(*item->identifier()));
         return;
@@ -349,16 +351,15 @@ void finishBody(IR::ClassSession& session, IR::MethodId method, IR::CodeUnit& un
     std::vector<jbc::analysis::FrameAt> frames;
     const auto summary = engine.compute(unit, sig, frames);
     if (!summary.ok)
-        fail("Stack frame analysis failed for method " + name + ": " +
-             jbc::analysis::to_string(summary.fail));
+        fail(std::string("Stack frame analysis failed: ") + jbc::analysis::to_string(summary.fail));
     if (!jbc::analysis::applyComputedMaxes(unit, summary, sig))
-        fail("Stack frame maxes adoption failed for method " + name);
+        fail("Stack frame maxes adoption failed");
 
     auto built = jbc::analysis::SmtBuildResult{};
     if (cf.major >= 50) {
         auto generated = jbc::analysis::buildStackMapTable(session, unit, frames);
         if (generated.is_err())
-            fail("StackMapTable generation failed for method " + name + ": " +
+            fail(std::string("StackMapTable generation failed: ") +
                  jbc::analysis::to_string(generated.unwrap_err()));
         built = std::move(generated).unwrap();
     }

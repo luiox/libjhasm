@@ -8,6 +8,7 @@
 #include "jvm_compiler.hpp"
 
 #include "jhasm/util/access_flags.hpp"
+#include "jhasm/util/location.hpp"
 #include "jhasm/util/text.hpp"
 
 #include <jbc/jbc.hpp>
@@ -72,9 +73,47 @@ constexpr ca::i32 T_SHORT = 9;
 constexpr ca::i32 T_INT = 10;
 constexpr ca::i32 T_LONG = 11;
 
+///@brief 编译诊断上下文（thread_local）：编译面是同步栈式调用，compileClass
+///       在进入成员、CodeCompiler::emit 在发射指令前写入，fail() 与顶层 catch
+///       读取——错误归属成员、Error 保留 jasm 源位置。location 借用 AST 节点，
+///       只在 compile() 调用栈内有效，DiagGuard 保证任何退出路径清空。
+struct DiagScope final
+{
+    std::string           member;    ///< 归属成员文本，如 "method foo(I)V"。
+    const util::Location* location = nullptr;  ///< 当前 AST 节点位置（借用）。
+};
+
+inline DiagScope& diagScope()
+{
+    thread_local DiagScope scope;
+    return scope;
+}
+
+///@brief compile() 入口挂 RAII 清空：不向调用外借出悬垂 AST 指针。
+class DiagGuard final
+{
+public:
+    DiagGuard()
+    {
+        auto& scope   = diagScope();
+        scope.member   = {};
+        scope.location = nullptr;
+    }
+    ~DiagGuard()
+    {
+        auto& scope   = diagScope();
+        scope.member   = {};
+        scope.location = nullptr;
+    }
+    DiagGuard(const DiagGuard&)            = delete;
+    DiagGuard& operator=(const DiagGuard&) = delete;
+};
+
 [[noreturn]] inline void fail(const std::string& message)
 {
-    throw std::invalid_argument(message);
+    const auto& scope = diagScope();
+    throw std::invalid_argument(message +
+                                (scope.member.empty() ? "" : " (in " + scope.member + ")"));
 }
 
 //错误类型的 to_string 探测（ADL）：没有诊断文本的错误退化成空串。

@@ -22,7 +22,11 @@ namespace IR = jbc::ir;
 
 std::vector<ca::u8> compileClass(const ast::Class& clazz, const JvmCompilerOptions& options)
 {
+    DiagGuard diagGuard;
+    auto&     diag = diagScope();
     const std::string thisName = internalNameOf(*clazz.name());
+    diag.member   = "class " + thisName;
+    diag.location = clazz.location();
     const std::string superName =
         clazz.superName() ? internalNameOf(*clazz.superName()) : std::string{};
     std::vector<std::string> interfaceNames;
@@ -113,6 +117,8 @@ std::vector<ca::u8> compileClass(const ast::Class& clazz, const JvmCompilerOptio
             //Seed 名字/描述符是 string_view：先落命名串再挂，视图必须活过 addField。
             const std::string fieldName = narrow(*field->name());
             const std::string fieldDesc = narrow(*field->descriptor());
+            diag.member   = "field " + fieldName + " " + fieldDesc;
+            diag.location = field->location();
             IR::FieldSeed fieldSeed;
             fieldSeed.name   = fieldName;
             fieldSeed.desc   = fieldDesc;
@@ -165,6 +171,8 @@ std::vector<ca::u8> compileClass(const ast::Class& clazz, const JvmCompilerOptio
             const auto method = std::static_pointer_cast<ast::Method>(item);
             std::string name = narrow(*method->name());
             std::string descriptor = narrow(*method->descriptor());
+            diag.member   = "method " + name + descriptor;
+            diag.location = method->location();
             if (jbc::type::parseMethodDescriptor(descriptor).is_err())
                 fail("Invalid method descriptor");
             const bool isStatic = (access(method->modifiers()) & ACC_STATIC) != 0;
@@ -253,8 +261,10 @@ error::Result<JvmCompileResult> JvmCompiler::compile(const ast::Class& clazz) co
         return error::Result<JvmCompileResult>::ok({std::move(bytes)});
     }
     catch (const std::exception& exception) {
-        auto                      message  = util::utf16(exception.what());
-        const util::Location*     location = clazz.location();
+        auto message = util::utf16(exception.what());
+        //位置取最深上下文：指令级 → 成员级 → 类级；AST 存活到本 catch 出栈。
+        const util::Location* location =
+            diagScope().location != nullptr ? diagScope().location : clazz.location();
         std::vector<error::Error> errors;
         if (location)
             errors.emplace_back(message.ref(), *location);
