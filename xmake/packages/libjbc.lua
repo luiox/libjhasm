@@ -58,6 +58,9 @@ package("libjbc")
     -- 0.4.22 = 精确档异常边发射域放宽到范围内可达指令（JVM 校验器保守口径，JVMS 4.10.1.4）：handler 可达 ⟺ 范围内至少一条可达指令，覆盖仅不可抛指令的 try 形态不再缺 handler 帧。
     add_versions("0.4.22", "a408506203aaba7f74cdf588885187d3a49b0bd0") -- PR #19 定版合入头  2026-10-28
 
+    -- 0.4.23 = 包版本与自版本对齐（get_lib_version）+ 仓库清理 + 类构建挂载面测试收编。
+    add_versions("0.4.23", "4228cf3650b2409a106511a3cf8ca7275ed5ed04") -- PR #21 合入 main 头  2026-10-29
+
     -- 嵌套 libca 直接钉到本仓单源版本（见文件头链接说明）。
     add_deps("libca " .. LUIOX_LIBCA_VERSION, {configs = {modules = LUIOX_LIBCA_MODULES}})
 
