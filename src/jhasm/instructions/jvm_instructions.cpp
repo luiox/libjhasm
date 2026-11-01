@@ -1,20 +1,13 @@
 #include "jvm_instructions.hpp"
 
+#include "jhasm/util/text.hpp"
+
 #include <charconv>
 #include <string>
 
 namespace jhasm::instructions {
 namespace {
-bool equals(ca::str::Utf16StringRef value, const char* ascii) noexcept
-{
-    ca::usize index = 0;
-    for (; ascii[index] != '\0'; ++index) {
-        if (index >= value.length() ||
-            value.char_at(index).value != static_cast<ca::u16>(ascii[index]))
-            return false;
-    }
-    return index == value.length();
-}
+using jhasm::util::equals;
 
 bool parseField(ca::str::Utf16StringRef value, ca::usize& index, bool allowVoid) noexcept
 {

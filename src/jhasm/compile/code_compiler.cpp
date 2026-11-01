@@ -157,7 +157,7 @@ void CodeCompiler::append(IR::Insn in)
 
 IR::Insn CodeCompiler::insnFor(ca::str::Utf16StringRef name, const std::vector<ast::ElementPtr>& args)
 {
-    const auto op  = opcodeUpper(name);
+    const auto op  = opcode(name);
     const auto low = [name](const char* text) { return equals(name, text); };
     IR::Insn    in;
     in.op = op;

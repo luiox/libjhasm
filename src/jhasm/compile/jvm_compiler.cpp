@@ -20,12 +20,6 @@ namespace {
 namespace C  = jbc::core;
 namespace IR = jbc::ir;
 
-ca::str::Utf16String diagnosticText(const std::string& value)
-{
-    return ca::str::Utf16String::from_utf8_string(ca::str::Utf8StringRef::from_data(
-        reinterpret_cast<const ca::u8*>(value.data()), value.size()));
-}
-
 std::vector<ca::u8> compileClass(const ast::Class& clazz, const JvmCompilerOptions& options)
 {
     const std::string thisName = internalNameOf(*clazz.name());
@@ -259,7 +253,7 @@ error::Result<JvmCompileResult> JvmCompiler::compile(const ast::Class& clazz) co
         return error::Result<JvmCompileResult>::ok({std::move(bytes)});
     }
     catch (const std::exception& exception) {
-        auto                      message  = diagnosticText(exception.what());
+        auto                      message  = util::utf16(exception.what());
         const util::Location*     location = clazz.location();
         std::vector<error::Error> errors;
         if (location)

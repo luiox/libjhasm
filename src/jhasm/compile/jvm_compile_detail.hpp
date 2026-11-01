@@ -7,6 +7,9 @@
 
 #include "jvm_compiler.hpp"
 
+#include "jhasm/util/access_flags.hpp"
+#include "jhasm/util/text.hpp"
+
 #include <jbc/jbc.hpp>
 
 #include <libca/str/utf8_string.hpp>
@@ -24,27 +27,29 @@ namespace jhasm::compile {
 namespace C  = jbc::core;
 namespace IR = jbc::ir;
 
-// 访问旗语（JVMS 4.1 Table 4.1-B；旧栈 jbytecode::core::Opcodes 的旗语面在此收编）。
-constexpr ca::i32 ACC_PUBLIC = 0x0001;
-constexpr ca::i32 ACC_PRIVATE = 0x0002;
-constexpr ca::i32 ACC_PROTECTED = 0x0004;
-constexpr ca::i32 ACC_STATIC = 0x0008;
-constexpr ca::i32 ACC_FINAL = 0x0010;
-constexpr ca::i32 ACC_SUPER = 0x0020;
-constexpr ca::i32 ACC_SYNCHRONIZED = 0x0020;
-constexpr ca::i32 ACC_VOLATILE = 0x0040;
-constexpr ca::i32 ACC_BRIDGE = 0x0040;
-constexpr ca::i32 ACC_TRANSIENT = 0x0080;
-constexpr ca::i32 ACC_VARARGS = 0x0080;
-constexpr ca::i32 ACC_NATIVE = 0x0100;
-constexpr ca::i32 ACC_INTERFACE = 0x0200;
-constexpr ca::i32 ACC_ABSTRACT = 0x0400;
-constexpr ca::i32 ACC_STRICT = 0x0800;
-constexpr ca::i32 ACC_SYNTHETIC = 0x1000;
-constexpr ca::i32 ACC_ANNOTATION = 0x2000;
-constexpr ca::i32 ACC_ENUM = 0x4000;
-constexpr ca::i32 ACC_MODULE = 0x8000;
-constexpr ca::i32 ACC_RECORD = 0x10000;
+//旗语常量与文本对比单源在 jhasm::util（编译/打印/解析共用），此处按编译面
+//习惯重导出。
+using jhasm::util::equals;
+using util::ACC_ANNOTATION;
+using util::ACC_ABSTRACT;
+using util::ACC_BRIDGE;
+using util::ACC_ENUM;
+using util::ACC_FINAL;
+using util::ACC_INTERFACE;
+using util::ACC_MODULE;
+using util::ACC_NATIVE;
+using util::ACC_PRIVATE;
+using util::ACC_PROTECTED;
+using util::ACC_PUBLIC;
+using util::ACC_RECORD;
+using util::ACC_STATIC;
+using util::ACC_STRICT;
+using util::ACC_SUPER;
+using util::ACC_SYNCHRONIZED;
+using util::ACC_SYNTHETIC;
+using util::ACC_TRANSIENT;
+using util::ACC_VARARGS;
+using util::ACC_VOLATILE;
 
 // 方法句柄 reference_kind（JVMS 4.4.8）。
 constexpr ca::u32 H_GETFIELD = 1;
@@ -114,17 +119,6 @@ public:
 private:
     std::deque<std::string> owned_;
 };
-
-inline bool equals(ca::str::Utf16StringRef value, const char* ascii) noexcept
-{
-    ca::usize index = 0;
-    for (; ascii[index] != '\0'; ++index) {
-        if (index >= value.length() ||
-            value.char_at(index).value != static_cast<ca::u16>(ascii[index]))
-            return false;
-    }
-    return index == value.length();
-}
 
 ///@brief UTF-16 → JVM modified UTF-8（JVMS 4.4.7）：NUL 走 0xC0 0x80，补充字符
 ///      按代理对拆成两个三字节单元（CESU-8 形态）。CP Utf8 载体的唯一编码口径，
