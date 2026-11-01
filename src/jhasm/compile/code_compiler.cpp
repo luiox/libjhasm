@@ -13,7 +13,7 @@ namespace jhasm::compile {
 
 namespace {
 
-///@brief 局部变量装载/存储的 _N 短格式（各族 _0.._3 连续；RET 无短格式）。
+/// @brief 局部变量装载/存储的 _N 短格式（各族 _0.._3 连续；RET 无短格式）。
 C::Op varShortForm(C::Op op, ca::i32 slot)
 {
     C::Op base;
@@ -32,7 +32,7 @@ C::Op varShortForm(C::Op op, ca::i32 slot)
     return static_cast<C::Op>(static_cast<ca::i32>(base) + slot);
 }
 
-///@brief InheritanceChecker → Strict 帧引擎（编译侧 SMT 生成用；与 analyzer 同构）。
+/// @brief InheritanceChecker → Strict 帧引擎（编译侧 SMT 生成用；与 analyzer 同构）。
 class InheritanceResolver final : public jbc::analysis::ITypeResolver
 {
 public:
@@ -332,6 +332,13 @@ void finishBody(IR::ClassSession& session, IR::MethodId method, IR::CodeUnit& un
                 const std::string& descriptor, bool isStatic)
 {
     C::ClassFile& cf = session.backing();
+
+    //64KB 预检：lower 落盘前给出带实际字节数的诊断。libjbc 的
+    //LowerError::CodeTooLarge 仍是兜底，但预检消息自带数字，排查更快。
+    const auto codeSize = unit.dom.encodedSize();
+    if (codeSize.is_ok() && codeSize.unwrap() > 0xFFFF)
+        fail("Method body is " + std::to_string(codeSize.unwrap()) +
+             " bytes of code, exceeding the 65535-byte limit (JVMS code_length)");
 
     require(IR::lowerMethod(session, method), "lowerMethod");
 

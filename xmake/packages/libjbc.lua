@@ -60,6 +60,7 @@ package("libjbc")
 
     -- 0.4.23 = 包版本与自版本对齐（get_lib_version）+ 仓库清理 + 类构建挂载面测试收编。
     add_versions("0.4.23", "4228cf3650b2409a106511a3cf8ca7275ed5ed04") -- PR #21 合入 main 头  2026-10-29
+    add_versions("0.4.24", "82ce8bf7951c0bfd18ad12260fea7ba51ecbaae8") -- 自动加宽 + 尺寸评估器 + CodeTooLarge 闸门
 
     -- 嵌套 libca 直接钉到本仓单源版本（见文件头链接说明）。
     add_deps("libca " .. LUIOX_LIBCA_VERSION, {configs = {modules = LUIOX_LIBCA_MODULES}})
