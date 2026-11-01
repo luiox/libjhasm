@@ -1,5 +1,7 @@
 #include "jvm_analyzer.hpp"
 
+#include "jhasm/util/text.hpp"
+
 #include <jbc/jbc.hpp>
 
 #include <deque>
@@ -12,12 +14,6 @@ namespace {
 
 namespace C  = jbc::core;
 namespace IR = jbc::ir;
-
-ca::str::Utf16String diagnosticText(const std::string& value)
-{
-    return ca::str::Utf16String::from_utf8_string(ca::str::Utf8StringRef::from_data(
-        reinterpret_cast<const ca::u8*>(value.data()), value.size()));
-}
 
 ca::str::Utf8String owning(std::string_view value)
 {
@@ -209,7 +205,7 @@ void checkInsnKinds(const C::ClassFile& cf, const jbc::analysis::MethodSig& sig,
                     const InheritanceChecker& inheritance, std::vector<error::Error>& errors)
 {
     const auto fail = [&](const std::string& detail) {
-        errors.emplace_back(diagnosticText("Method " + std::string(sig.name) +
+        errors.emplace_back(util::utf16("Method " + std::string(sig.name) +
                                            std::string(sig.desc) + ": " + detail)
                                 .ref());
     };
@@ -435,7 +431,7 @@ error::Result<JvmAnalysisResult> JvmAnalyzer::analyze(const std::vector<ca::u8>&
                                      C::to_string(failure.read)
                                : std::string("classfile session failed: ") +
                                      IR::to_string(failure.session);
-            errors.emplace_back(diagnosticText(message).ref());
+            errors.emplace_back(util::utf16(message).ref());
             return error::Result<JvmAnalysisResult>(std::move(result), std::move(errors), {});
         }
         //unwrap() && 按值移出 shared_ptr：先落命名变量持有会话，再取引用
@@ -457,7 +453,7 @@ error::Result<JvmAnalysisResult> JvmAnalyzer::analyze(const std::vector<ca::u8>&
                 std::string message = "Method " + std::string{cf.utf8(m.nameCp)} +
                                       std::string{cf.utf8(m.descCp)} + ": body promote failed: " +
                                       IR::to_string(promoted.unwrap_err());
-                errors.emplace_back(diagnosticText(message).ref());
+                errors.emplace_back(util::utf16(message).ref());
                 result.methods.push_back(std::move(methodResult));
                 continue;
             }
@@ -487,7 +483,7 @@ error::Result<JvmAnalysisResult> JvmAnalyzer::analyze(const std::vector<ca::u8>&
                 std::string message = "Method " + std::string{cf.utf8(m.nameCp)} +
                                       std::string{cf.utf8(m.descCp)} + ": analysis failed: " +
                                       jbc::analysis::to_string(summary.fail);
-                errors.emplace_back(diagnosticText(message).ref());
+                errors.emplace_back(util::utf16(message).ref());
             }
             else {
                 ca::usize position = 0;
@@ -507,7 +503,7 @@ error::Result<JvmAnalysisResult> JvmAnalyzer::analyze(const std::vector<ca::u8>&
         }
     }
     catch (const std::exception& exception) {
-        errors.emplace_back(diagnosticText(exception.what()).ref());
+        errors.emplace_back(util::utf16(exception.what()).ref());
     }
     return error::Result<JvmAnalysisResult>(std::move(result), std::move(errors), {});
 }

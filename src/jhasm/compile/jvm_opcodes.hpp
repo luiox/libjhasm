@@ -1,8 +1,8 @@
 ﻿#pragma once
 
-// jasm 助记符 → libjbc Op 映射（编译面唯一入口）。jasm 小写助记符先经
-// opcodeUpper 归一大写再查表；jasm 扩展助记符（LDC_W/INVOKEVIRTUALINTERFACE
-// 等旧栈别名）在表外特判。
+// jasm 助记符 → libjbc Op 映射（编译面唯一入口）。反查表单源 = libjbc
+// mnemonicOf 全量码表（小写）；jasm 扩展助记符（invoke*interface 族）与
+// ldc_w/ldc2_w 旧栈别名在表构建时并入。大小写不敏感。
 
 #include <jbc/jbc.hpp>
 
@@ -12,10 +12,7 @@ namespace jhasm::compile {
 
 namespace C = jbc::core;
 
-///@brief 大写助记符 → Op；未知助记符抛 std::invalid_argument。
+///@brief jasm 助记符 → Op；未知助记符抛 std::invalid_argument（带助记符文本）。
 C::Op opcode(ca::str::Utf16StringRef name);
-
-///@brief 助记符大小写归一后查表（jasm 文本面一律小写，libjbc 名称面一律大写）。
-C::Op opcodeUpper(ca::str::Utf16StringRef name);
 
 }   //namespace jhasm::compile

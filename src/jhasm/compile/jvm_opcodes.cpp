@@ -1,237 +1,58 @@
 #include "jvm_opcodes.hpp"
 
-#include "jvm_compile_detail.hpp"
-
 #include <libca/str/utf8_string.hpp>
 
 #include <algorithm>
 #include <cctype>
 #include <stdexcept>
 #include <string>
+#include <unordered_map>
 
 namespace jhasm::compile {
 
-C::Op opcode(ca::str::Utf16StringRef name)
+namespace {
+
+///@brief 助记符反查表，一次构建：键 = 小写助记符。
+///
+///单源 = libjbc kMnemonic（mnemonicOf 覆盖 0x00–0xC9 全量 202 项，本身小写），
+///新增指令只进 libjbc 码表，此处零维护；一致性由 unittest 的漂移断言锁定
+///（每个 Op 的 mnemonicOf 必须反查回自身，ldc 族别名除外）。
+///
+///表构建时并入两组非标准条目：
+///1. ldc_w/ldc2_w → LDC：与 ldc 同一 CP 语义，装载面按索引宽度决定是否升格
+///   ldc_w（旧栈 jblw 写出口径），压过 LDC_W/LDC2_W 自身条目；
+///2. invoke*interface 族：jasm 对接口方法调用的显式拼写（itable 分派语义由
+///   intern 面区分），libjbc 码表无此名。
+const std::unordered_map<std::string, C::Op>& opcodeTable()
 {
-#define JHASM_OPCODE(Name) \
-    if (equals(name, #Name)) return C::Op::Name
-    JHASM_OPCODE(NOP);
-    JHASM_OPCODE(ACONST_NULL);
-    JHASM_OPCODE(ICONST_M1);
-    JHASM_OPCODE(ICONST_0);
-    JHASM_OPCODE(ICONST_1);
-    JHASM_OPCODE(ICONST_2);
-    JHASM_OPCODE(ICONST_3);
-    JHASM_OPCODE(ICONST_4);
-    JHASM_OPCODE(ICONST_5);
-    JHASM_OPCODE(LCONST_0);
-    JHASM_OPCODE(LCONST_1);
-    JHASM_OPCODE(FCONST_0);
-    JHASM_OPCODE(FCONST_1);
-    JHASM_OPCODE(FCONST_2);
-    JHASM_OPCODE(DCONST_0);
-    JHASM_OPCODE(DCONST_1);
-    JHASM_OPCODE(BIPUSH);
-    JHASM_OPCODE(SIPUSH);
-    JHASM_OPCODE(LDC);
-    JHASM_OPCODE(ILOAD);
-    JHASM_OPCODE(ILOAD_0);
-    JHASM_OPCODE(ILOAD_1);
-    JHASM_OPCODE(ILOAD_2);
-    JHASM_OPCODE(ILOAD_3);
-    JHASM_OPCODE(LLOAD);
-    JHASM_OPCODE(LLOAD_0);
-    JHASM_OPCODE(LLOAD_1);
-    JHASM_OPCODE(LLOAD_2);
-    JHASM_OPCODE(LLOAD_3);
-    JHASM_OPCODE(FLOAD);
-    JHASM_OPCODE(FLOAD_0);
-    JHASM_OPCODE(FLOAD_1);
-    JHASM_OPCODE(FLOAD_2);
-    JHASM_OPCODE(FLOAD_3);
-    JHASM_OPCODE(DLOAD);
-    JHASM_OPCODE(DLOAD_0);
-    JHASM_OPCODE(DLOAD_1);
-    JHASM_OPCODE(DLOAD_2);
-    JHASM_OPCODE(DLOAD_3);
-    JHASM_OPCODE(ALOAD);
-    JHASM_OPCODE(ALOAD_0);
-    JHASM_OPCODE(ALOAD_1);
-    JHASM_OPCODE(ALOAD_2);
-    JHASM_OPCODE(ALOAD_3);
-    JHASM_OPCODE(IALOAD);
-    JHASM_OPCODE(LALOAD);
-    JHASM_OPCODE(FALOAD);
-    JHASM_OPCODE(DALOAD);
-    JHASM_OPCODE(AALOAD);
-    JHASM_OPCODE(BALOAD);
-    JHASM_OPCODE(CALOAD);
-    JHASM_OPCODE(SALOAD);
-    JHASM_OPCODE(ISTORE);
-    JHASM_OPCODE(ISTORE_0);
-    JHASM_OPCODE(ISTORE_1);
-    JHASM_OPCODE(ISTORE_2);
-    JHASM_OPCODE(ISTORE_3);
-    JHASM_OPCODE(LSTORE);
-    JHASM_OPCODE(LSTORE_0);
-    JHASM_OPCODE(LSTORE_1);
-    JHASM_OPCODE(LSTORE_2);
-    JHASM_OPCODE(LSTORE_3);
-    JHASM_OPCODE(FSTORE);
-    JHASM_OPCODE(FSTORE_0);
-    JHASM_OPCODE(FSTORE_1);
-    JHASM_OPCODE(FSTORE_2);
-    JHASM_OPCODE(FSTORE_3);
-    JHASM_OPCODE(DSTORE);
-    JHASM_OPCODE(DSTORE_0);
-    JHASM_OPCODE(DSTORE_1);
-    JHASM_OPCODE(DSTORE_2);
-    JHASM_OPCODE(DSTORE_3);
-    JHASM_OPCODE(ASTORE);
-    JHASM_OPCODE(ASTORE_0);
-    JHASM_OPCODE(ASTORE_1);
-    JHASM_OPCODE(ASTORE_2);
-    JHASM_OPCODE(ASTORE_3);
-    JHASM_OPCODE(IASTORE);
-    JHASM_OPCODE(LASTORE);
-    JHASM_OPCODE(FASTORE);
-    JHASM_OPCODE(DASTORE);
-    JHASM_OPCODE(AASTORE);
-    JHASM_OPCODE(BASTORE);
-    JHASM_OPCODE(CASTORE);
-    JHASM_OPCODE(SASTORE);
-    JHASM_OPCODE(POP);
-    JHASM_OPCODE(POP2);
-    JHASM_OPCODE(DUP);
-    JHASM_OPCODE(DUP_X1);
-    JHASM_OPCODE(DUP_X2);
-    JHASM_OPCODE(DUP2);
-    JHASM_OPCODE(DUP2_X1);
-    JHASM_OPCODE(DUP2_X2);
-    JHASM_OPCODE(SWAP);
-    JHASM_OPCODE(IADD);
-    JHASM_OPCODE(LADD);
-    JHASM_OPCODE(FADD);
-    JHASM_OPCODE(DADD);
-    JHASM_OPCODE(ISUB);
-    JHASM_OPCODE(LSUB);
-    JHASM_OPCODE(FSUB);
-    JHASM_OPCODE(DSUB);
-    JHASM_OPCODE(IMUL);
-    JHASM_OPCODE(LMUL);
-    JHASM_OPCODE(FMUL);
-    JHASM_OPCODE(DMUL);
-    JHASM_OPCODE(IDIV);
-    JHASM_OPCODE(LDIV);
-    JHASM_OPCODE(FDIV);
-    JHASM_OPCODE(DDIV);
-    JHASM_OPCODE(IREM);
-    JHASM_OPCODE(LREM);
-    JHASM_OPCODE(FREM);
-    JHASM_OPCODE(DREM);
-    JHASM_OPCODE(INEG);
-    JHASM_OPCODE(LNEG);
-    JHASM_OPCODE(FNEG);
-    JHASM_OPCODE(DNEG);
-    JHASM_OPCODE(ISHL);
-    JHASM_OPCODE(LSHL);
-    JHASM_OPCODE(ISHR);
-    JHASM_OPCODE(LSHR);
-    JHASM_OPCODE(IUSHR);
-    JHASM_OPCODE(LUSHR);
-    JHASM_OPCODE(IAND);
-    JHASM_OPCODE(LAND);
-    JHASM_OPCODE(IOR);
-    JHASM_OPCODE(LOR);
-    JHASM_OPCODE(IXOR);
-    JHASM_OPCODE(LXOR);
-    JHASM_OPCODE(IINC);
-    JHASM_OPCODE(I2L);
-    JHASM_OPCODE(I2F);
-    JHASM_OPCODE(I2D);
-    JHASM_OPCODE(L2I);
-    JHASM_OPCODE(L2F);
-    JHASM_OPCODE(L2D);
-    JHASM_OPCODE(F2I);
-    JHASM_OPCODE(F2L);
-    JHASM_OPCODE(F2D);
-    JHASM_OPCODE(D2I);
-    JHASM_OPCODE(D2L);
-    JHASM_OPCODE(D2F);
-    JHASM_OPCODE(I2B);
-    JHASM_OPCODE(I2C);
-    JHASM_OPCODE(I2S);
-    JHASM_OPCODE(LCMP);
-    JHASM_OPCODE(FCMPL);
-    JHASM_OPCODE(FCMPG);
-    JHASM_OPCODE(DCMPL);
-    JHASM_OPCODE(DCMPG);
-    JHASM_OPCODE(IFEQ);
-    JHASM_OPCODE(IFNE);
-    JHASM_OPCODE(IFLT);
-    JHASM_OPCODE(IFGE);
-    JHASM_OPCODE(IFGT);
-    JHASM_OPCODE(IFLE);
-    JHASM_OPCODE(IF_ICMPEQ);
-    JHASM_OPCODE(IF_ICMPNE);
-    JHASM_OPCODE(IF_ICMPLT);
-    JHASM_OPCODE(IF_ICMPGE);
-    JHASM_OPCODE(IF_ICMPGT);
-    JHASM_OPCODE(IF_ICMPLE);
-    JHASM_OPCODE(IF_ACMPEQ);
-    JHASM_OPCODE(IF_ACMPNE);
-    JHASM_OPCODE(GOTO);
-    JHASM_OPCODE(JSR);
-    JHASM_OPCODE(RET);
-    JHASM_OPCODE(TABLESWITCH);
-    JHASM_OPCODE(LOOKUPSWITCH);
-    JHASM_OPCODE(IRETURN);
-    JHASM_OPCODE(LRETURN);
-    JHASM_OPCODE(FRETURN);
-    JHASM_OPCODE(DRETURN);
-    JHASM_OPCODE(ARETURN);
-    JHASM_OPCODE(RETURN);
-    JHASM_OPCODE(GETSTATIC);
-    JHASM_OPCODE(PUTSTATIC);
-    JHASM_OPCODE(GETFIELD);
-    JHASM_OPCODE(PUTFIELD);
-    JHASM_OPCODE(INVOKEVIRTUAL);
-    JHASM_OPCODE(INVOKESPECIAL);
-    JHASM_OPCODE(INVOKESTATIC);
-    JHASM_OPCODE(INVOKEINTERFACE);
-    JHASM_OPCODE(INVOKEDYNAMIC);
-    JHASM_OPCODE(NEW);
-    JHASM_OPCODE(NEWARRAY);
-    JHASM_OPCODE(ANEWARRAY);
-    JHASM_OPCODE(ARRAYLENGTH);
-    JHASM_OPCODE(ATHROW);
-    JHASM_OPCODE(CHECKCAST);
-    JHASM_OPCODE(INSTANCEOF);
-    JHASM_OPCODE(MONITORENTER);
-    JHASM_OPCODE(MONITOREXIT);
-    JHASM_OPCODE(MULTIANEWARRAY);
-    JHASM_OPCODE(IFNULL);
-    JHASM_OPCODE(IFNONNULL);
-    JHASM_OPCODE(GOTO_W);
-    JHASM_OPCODE(JSR_W);
-#undef JHASM_OPCODE
-    //旧栈别名：ldc_w/ldc2_w 与 ldc 同一 CP 语义；invoke*interface 族是
-    //jasm 对接口方法调用的显式拼写（itable 分派语义由 intern 面区分）。
-    if (equals(name, "LDC_W") || equals(name, "LDC2_W")) return C::Op::LDC;
-    if (equals(name, "INVOKEVIRTUALINTERFACE")) return C::Op::INVOKEINTERFACE;
-    if (equals(name, "INVOKESTATICINTERFACE")) return C::Op::INVOKESTATIC;
-    if (equals(name, "INVOKESPECIALINTERFACE")) return C::Op::INVOKESPECIAL;
-    throw std::invalid_argument("Unknown JVM opcode");
+    static const std::unordered_map<std::string, C::Op> table = [] {
+        std::unordered_map<std::string, C::Op> t;
+        t.reserve(0xCA + 5);
+        for (ca::u32 b = 0; b < 0xCA; ++b)
+            t.emplace(C::mnemonicOf(static_cast<C::Op>(b)), static_cast<C::Op>(b));
+        t["ldc_w"]                  = C::Op::LDC;
+        t["ldc2_w"]                 = C::Op::LDC;
+        t["invokevirtualinterface"] = C::Op::INVOKEINTERFACE;
+        t["invokestaticinterface"]  = C::Op::INVOKESTATIC;
+        t["invokespecialinterface"] = C::Op::INVOKESPECIAL;
+        return t;
+    }();
+    return table;
 }
 
-C::Op opcodeUpper(ca::str::Utf16StringRef name)
+}   //namespace
+
+C::Op opcode(ca::str::Utf16StringRef name)
 {
+    //jasm 助记符纯 ASCII：UTF-8 化后逐字节归一小写再查表（源面大小写不敏感）。
     std::string text = name.to_utf8_string().to_std_string();
     std::transform(text.begin(), text.end(), text.begin(), [](unsigned char c) {
-        return static_cast<char>(std::toupper(c));
+        return static_cast<char>(std::tolower(c));
     });
-    auto upper = ca::str::Utf16String::value_of(text.c_str());
-    return opcode(upper.ref());
+    const auto found = opcodeTable().find(text);
+    if (found == opcodeTable().end())
+        throw std::invalid_argument("Unknown JVM opcode: " + text);
+    return found->second;
 }
 
 }   //namespace jhasm::compile

@@ -1,6 +1,7 @@
 #include "declaration_parser.hpp"
 
 #include "jhasm/error/error_collector.hpp"
+#include "jhasm/util/text.hpp"
 
 #include <libca/str/utf16_string.hpp>
 
@@ -10,17 +11,7 @@ namespace jhasm::parser {
 namespace {
 using namespace ast;
 
-bool equals(ca::str::Utf16StringRef value, const char* ascii) noexcept
-{
-    ca::usize index = 0;
-    for (; ascii[index] != '\0'; ++index) {
-        if (index >= value.length() ||
-            value.char_at(index).value != static_cast<ca::u16>(ascii[index])) {
-            return false;
-        }
-    }
-    return index == value.length();
-}
+using jhasm::util::equals;
 
 bool startsWithDot(const Token& token) noexcept
 {
