@@ -47,6 +47,12 @@ using jhasm::util::ACC_VARARGS;
 using jhasm::util::ACC_VOLATILE;
 using jhasm::util::utf16;
 
+///@brief 成员上下文重抛：打印面无源位置，错误归属靠成员前缀表达。
+[[noreturn]] void rethrowIn(const std::string& member, const std::exception& error)
+{
+    throw std::invalid_argument("in " + member + ": " + error.what());
+}
+
 ///@brief JVM modified UTF-8 → UTF-16（JVMS 4.4.7）：0xC0 0x80 解码为 NUL，
 ///      代理对以两个三字节单元（CESU-8 形态）顺序落两个 char16。字节序一致
 ///      往返由编码侧 EscapeUtil 负责，此处只管解码容错（畸形字节落 '?'）。
@@ -786,32 +792,44 @@ error::Result<ca::str::Utf16String> JvmPrinter::print(const std::vector<ca::u8>&
             output << ".implements " << literal(cf.cp.utf8Of(cf.cp.at(cp).a)) << '\n';
         output << ".class " << modifiers(cf.access, true, false) << literal(cf.thisName()) << " {\n";
         for (auto& field : cf.fields) {
-            if (auto* visible =
-                    findAttr<C::AnnotationsAttr>(cf, field.attrs, "RuntimeVisibleAnnotations"))
-                annotations(output, cf, visible->annos, ".visible-annotation", "    ");
-            if (auto* invisible =
-                    findAttr<C::AnnotationsAttr>(cf, field.attrs, "RuntimeInvisibleAnnotations"))
-                annotations(output, cf, invisible->annos, ".invisible-annotation", "    ");
-            if (auto* typeVisible =
-                    findAttr<C::TypeAnnotationsAttr>(cf, field.attrs, "RuntimeVisibleTypeAnnotations"))
-                typeAnnotations(output, cf, typeVisible->annotations, ".type-visible-annotation",
-                                "    ");
-            if (auto* typeInvisible = findAttr<C::TypeAnnotationsAttr>(
-                    cf, field.attrs, "RuntimeInvisibleTypeAnnotations"))
-                typeAnnotations(output, cf, typeInvisible->annotations,
-                                ".type-invisible-annotation", "    ");
-            if (auto* signature = findAttr<C::SignatureAttr>(cf, field.attrs, "Signature"))
-                output << "    .signature " << quoted(cf.cp.utf8Of(signature->signatureCp))
-                       << '\n';
-            output << "    .field " << modifiers(field.access, false, false)
-                   << literal(cf.utf8(field.nameCp)) << ' ' << literal(cf.utf8(field.descCp));
-            if (const auto* value = findAttr<C::ConstantValueAttr>(cf, field.attrs, "ConstantValue"))
-                output << " { value: " << constant(cf, bsm, value->constantValueCp) << " }";
-            output << '\n';
+            const auto member =
+                "field " + literal(cf.utf8(field.nameCp)) + " " + literal(cf.utf8(field.descCp));
+            try {
+                if (auto* visible = findAttr<C::AnnotationsAttr>(
+                        cf, field.attrs, "RuntimeVisibleAnnotations"))
+                    annotations(output, cf, visible->annos, ".visible-annotation", "    ");
+                if (auto* invisible =
+                        findAttr<C::AnnotationsAttr>(cf, field.attrs, "RuntimeInvisibleAnnotations"))
+                    annotations(output, cf, invisible->annos, ".invisible-annotation", "    ");
+                if (auto* typeVisible = findAttr<C::TypeAnnotationsAttr>(
+                        cf, field.attrs, "RuntimeVisibleTypeAnnotations"))
+                    typeAnnotations(output, cf, typeVisible->annotations,
+                                    ".type-visible-annotation", "    ");
+                if (auto* typeInvisible = findAttr<C::TypeAnnotationsAttr>(
+                        cf, field.attrs, "RuntimeInvisibleTypeAnnotations"))
+                    typeAnnotations(output, cf, typeInvisible->annotations,
+                                    ".type-invisible-annotation", "    ");
+                if (auto* signature = findAttr<C::SignatureAttr>(cf, field.attrs, "Signature"))
+                    output << "    .signature " << quoted(cf.cp.utf8Of(signature->signatureCp))
+                           << '\n';
+                output << "    .field " << modifiers(field.access, false, false)
+                       << literal(cf.utf8(field.nameCp)) << ' ' << literal(cf.utf8(field.descCp));
+                if (const auto* value =
+                        findAttr<C::ConstantValueAttr>(cf, field.attrs, "ConstantValue"))
+                    output << " { value: " << constant(cf, bsm, value->constantValueCp) << " }";
+                output << '\n';
+            }
+            catch (const std::exception& error) { rethrowIn(member, error); }
         }
         if (!cf.fields.empty() && !cf.methods.empty()) output << '\n';
         for (ca::usize index = 0; index < cf.methods.size(); ++index) {
-            printMethodDeclaration(output, session, index, bsm);
+            const auto& method = cf.methods[index];
+            const auto  member = "method " + literal(cf.utf8(method.nameCp)) + " " +
+                                literal(cf.utf8(method.descCp));
+            try {
+                printMethodDeclaration(output, session, index, bsm);
+            }
+            catch (const std::exception& error) { rethrowIn(member, error); }
             if (index + 1 != cf.methods.size()) output << '\n';
         }
         output << "}\n";
