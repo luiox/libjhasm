@@ -5,7 +5,7 @@
 
 namespace jhasm::parser {
 
-///@brief 把 primitive declarations 处理为 JVM specific AST，并校验 JVM 指令。
+/// @brief 把 primitive declarations 处理为 JVM specific AST，并校验 JVM 指令。
 class ASTProcessor final
 {
 public:

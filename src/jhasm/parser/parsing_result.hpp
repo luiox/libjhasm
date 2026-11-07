@@ -7,7 +7,7 @@
 
 namespace jhasm::parser {
 
-///@brief Declaration parser 的拥有型部分结果与注释集合。
+/// @brief Declaration parser 的拥有型部分结果与注释集合。
 class ParsingResult
 {
 public:

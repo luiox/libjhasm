@@ -25,7 +25,7 @@ includes("xmake/packages/libjbc.lua")
 set_languages("cxx17")
 add_rules("mode.debug", "mode.release")
 
-add_requires("libjbc 0.4.23")
+add_requires("libjbc 0.4.24")
 add_requires("libca " .. LUIOX_LIBCA_VERSION, {configs = {modules = LUIOX_LIBCA_MODULES}})
 add_requires("gtest")
 
@@ -77,6 +77,7 @@ if has_config("with_tests") then
         add_files("test/unittest/main.cpp")
         add_files("test/unittest/opcode_table_test.cpp")
         add_files("test/unittest/error_path_test.cpp")
+        add_files("test/unittest/code_size_test.cpp")
         add_includedirs("src")
         set_rundir("$(projectdir)")
 

@@ -10,16 +10,16 @@
 
 namespace jhasm::compile {
 
-///@brief AST 节点 → 注解元素值规格（注解默认值 attach 用）。
+/// @brief AST 节点 → 注解元素值规格（注解默认值 attach 用）。
 IR::SemElemValue semElement(const ast::ElementPtr& value, SpecArena& arena);
 
-///@brief AST 注解 → 语义注解规格（借用串落 SpecArena，活到 attach 返回）。
+/// @brief AST 注解 → 语义注解规格（借用串落 SpecArena，活到 attach 返回）。
 IR::SemAnnotation semAnnotation(const ast::Annotation& value, SpecArena& arena);
 
-///@brief 类型注解 AST 列表 → typed TypeAnnotations 属性体（手写体，直挂面）。
+/// @brief 类型注解 AST 列表 → typed TypeAnnotations 属性体（手写体，直挂面）。
 ///
-///声明必须在 attach 模板之前：模板体引用本函数属非依赖名，GCC 两阶段
-///查找要求它在定义点可见（MSVC 宽松，linux CI 已实证）。
+/// 声明必须在 attach 模板之前：模板体引用本函数属非依赖名，GCC 两阶段
+/// 查找要求它在定义点可见（MSVC 宽松，linux CI 已实证）。
 std::unique_ptr<C::TypeAnnotationsAttr> typeAnnotationsAttr(
     IR::ClassSession& session, const std::vector<ast::AnnotationPtr>& values);
 
@@ -47,7 +47,7 @@ void attachTypeAnnotations(IR::ClassSession& session, bool visible,
             "attachTypeAnnotations");
 }
 
-///@brief 简单注解 + 类型注解的成套挂载（类/字段/方法共用形状）。
+/// @brief 简单注解 + 类型注解的成套挂载（类/字段/方法共用形状）。
 template <typename AttachSimple, typename AttachType>
 void installAnnotations(IR::ClassSession& session, const ast::Attributes& attributes,
                         AttachSimple&& attachSimple, AttachType&& attachType)
@@ -58,11 +58,11 @@ void installAnnotations(IR::ClassSession& session, const ast::Attributes& attrib
     attachTypeAnnotations(session, false, attributes.invisibleTypeAnnotations, attachType);
 }
 
-///@brief Signature 属性体（无 .signature 声明时返回空）。
+/// @brief Signature 属性体（无 .signature 声明时返回空）。
 std::unique_ptr<C::SignatureAttr> signatureAttr(IR::ClassSession& session,
                                                 const ast::Attributes& attributes);
 
-///@brief Record 组件嵌套属性表直挂（挂载点在 Record 属性体内，不经会话 attach 面）。
+/// @brief Record 组件嵌套属性表直挂（挂载点在 Record 属性体内，不经会话 attach 面）。
 void mountComponentAttrs(IR::ClassSession& session, std::vector<C::AttrSlot>& table,
                          const ast::Attributes& attributes);
 

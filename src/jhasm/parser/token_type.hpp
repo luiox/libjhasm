@@ -2,7 +2,7 @@
 
 namespace jhasm::parser {
 
-///@brief Jasm tokenizer 产生的 Token 类别。
+/// @brief Jasm tokenizer 产生的 Token 类别。
 enum class TokenType
 {
     Number,       ///< 整数或浮点数字面量。
