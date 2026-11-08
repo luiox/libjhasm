@@ -18,11 +18,15 @@ const char* get_lib_version() noexcept;
 const char* get_upstream_revision() noexcept;
 
 /// @brief 执行完整 Jasm JVM 汇编流水线并返回 classfile bytes。
+/// @return 失败时返回错误诊断：AST 归属的语义/装配错误保留 jasm 源位置，
+///         流水线内部错误无位置；前置阶段失败时 warnings 一并透出。
 error::Result<compile::JvmCompileResult> assemble(ca::str::Utf16StringRef     sourceName,
                                                   ca::str::Utf16StringRef     source,
                                                   compile::JvmCompilerOptions options = {});
 
 /// @brief 将 classfile bytes 反汇编为可重新汇编的规范化 Jasm。
+/// @return 失败返回单条无位置诊断：classfile 读取失败，或打印途中遇到无法
+///         解释的结构（成员级失败带 ``in <member>`` 前缀）。
 error::Result<ca::str::Utf16String> disassemble(const std::vector<ca::u8>& classBytes);
 
 /// @brief 将 classfile 中指定的方法反汇编为规范化 Jasm 声明。
@@ -34,6 +38,8 @@ error::Result<ca::str::Utf16String> disassembleMethod(const std::vector<ca::u8>&
                                                        ca::str::Utf8StringRef descriptor);
 
 /// @brief 分析 classfile 中全部非 abstract/native 方法并返回 owning frame 快照。
+/// @return 字节不可读时返回无值错误；分析途中单个方法失败记入 errors，
+///         其余方法的快照仍在 value 中（部分成功语义）。
 error::Result<analysis::JvmAnalysisResult> analyze(
     const std::vector<ca::u8>& classBytes, const analysis::InheritanceChecker& inheritance =
                                                analysis::EmptyInheritanceChecker::instance());

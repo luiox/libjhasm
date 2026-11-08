@@ -13,6 +13,12 @@ namespace jhasm::printer {
 class JvmPrinter final
 {
 public:
+    /// @brief 打印完整 classfile 为含 `.class` 声明的完整 Jasm 文本。
+    ///
+    /// @param classBytes 完整 classfile 字节。
+    /// @return 失败返回单条无位置诊断：classfile 读取失败带
+    ///         ``classfile read failed`` 前缀，成员级失败带 ``in <member>``
+    ///         前缀归属到具体字段/方法。
     error::Result<ca::str::Utf16String> print(const std::vector<ca::u8>& classBytes) const;
 
     /// @brief 将指定方法打印为可嵌入 class Jasm 的规范化声明。
