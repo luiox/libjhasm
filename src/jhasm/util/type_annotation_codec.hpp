@@ -14,7 +14,7 @@ namespace jhasm::util {
 ///
 /// first/second 按 target 家族取该形态的自然载荷（type_parameter_index /
 /// supertype_index / formal_parameter_index / throws_index → first；
-/// bound_index / catch_index → second）。只覆盖类/方法级 target 形态——
+/// bound_index / catch_index → second）。只覆盖类/方法级 target 形态，
 /// 带 pc offset 的 Code 级形态不进 Jasm 文本面（与旧栈打印行为一致）。
 inline ca::i32 packTypeRef(ca::u8 targetType, ca::u32 first, ca::u32 second) noexcept
 {
@@ -31,7 +31,7 @@ inline void unpackTypeRef(ca::i32 ref, ca::u8& targetType, ca::u32& first,
     second     = static_cast<ca::u32>(ref) & 0xFF;
 }
 
-/// @brief type_path 的文本编码：每段一个小写字母——a=深入数组、b=深入嵌套、
+/// @brief type_path 的文本编码：每段一个小写字母：a=深入数组、b=深入嵌套、
 ///       c=通配符界、d=类型实参（后跟十进制下标），段间直接连写（贪心可逆）。
 ///
 /// 字母 + 数字的连写是 tokenizer 的安全 Identifier 形态（数字带下划线才会被

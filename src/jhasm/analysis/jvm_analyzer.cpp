@@ -23,7 +23,7 @@ ca::str::Utf8String owning(std::string_view value)
 
 /// @brief InheritanceChecker → libjbc Strict 帧引擎的引用合并策略。
 ///
-/// 同名引用合并为自身；跨类引用经 InheritanceChecker 求公共父类——与旧栈
+/// 同名引用合并为自身；跨类引用经 InheritanceChecker 求公共父类，与旧栈
 /// HierarchyVerifier::merge 的可观测语义一致（空 checker 回落 Object）。
 /// 合并产物的名字由本对象自持（帧域对 resolver 返回的 VType.name 只借用，
 /// 寿命约定与 libjbc 测试栈的 StubResolver 同构：resolver 活过 compute 与
@@ -115,7 +115,7 @@ Frame snapshot(const jbc::analysis::FrameAt& source,
 // ()I 方法体 return 这类类别错配无感直通。此处对可达帧快照做逐指令类别
 // 复核：快照 Value 携带描述符形态类别（"I"/"J"/"L…;"/"Lnull;"/空=未知或
 // 垫底），已知类别不匹配即产出 error（Strict 域的值带精确类别与名字，不
-// 误报；空槽一律放行——保守面）。
+// 误报；空槽一律放行，保守面）。
 
 /// @brief 引用形态描述符判定（L…; / [ 开头；"Lnull;" 是 null 形态）。
 bool isRefShape(std::string_view d)
@@ -277,7 +277,7 @@ void checkInsnKinds(const C::ClassFile& cf, const jbc::analysis::MethodSig& sig,
             const std::string_view receiver = descAt(frame, fromTop);
             expectRefTop(receiver, "invoke receiver");
             // 接收者名字互赋（虚分发族）：receiver 须可赋给 CP owner 类。
-            // INVOKESPECIAL 不查——<init> 的 uninit 槽与 super 调用的 this
+            // INVOKESPECIAL 不查，<init> 的 uninit 槽与 super 调用的 this
             // 接收者相对 owner 是合法非同形态（精确比对会误报构造器链与
             // super.m() 这类 javac 常规形态）。
             if (!receiver.empty() && insn.op != C::Op::INVOKESPECIAL) {

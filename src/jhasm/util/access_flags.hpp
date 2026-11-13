@@ -1,6 +1,6 @@
 ﻿#pragma once
 
-// 访问旗语常量（JVMS 4.1 Table 4.1-B）——libjhasm 单源。编译面（jasm 修饰符
+// 访问旗语常量（JVMS 4.1 Table 4.1-B），libjhasm 单源。编译面（jasm 修饰符
 // 文本 → 旗语）与打印面（旗语 → 修饰符文本）共用；旧栈 jbytecode::core::Opcodes
 // 的旗语面收编于此。
 

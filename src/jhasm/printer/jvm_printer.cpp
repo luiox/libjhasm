@@ -180,7 +180,7 @@ std::string modifiers(ca::i32 access, bool clazz, bool method)
     return result;
 }
 
-// —— 常量池载荷打印（ldc / 字段初值 / BSM 静态参数共用）——
+// 常量池载荷打印（ldc / 字段初值 / BSM 静态参数共用）
 
 std::string constant(const C::ClassFile& cf, const C::BootstrapMethodsAttr* bsm, ca::u32 index);
 
@@ -268,7 +268,7 @@ std::string constant(const C::ClassFile& cf, const C::BootstrapMethodsAttr* bsm,
     }
 }
 
-// —— 属性槽定位（按名字查找 + 惰性解码；会话持有非 const 模型）——
+// 属性槽定位（按名字查找 + 惰性解码；会话持有非 const 模型）
 
 template <typename T>
 T* findAttr(C::ClassFile& cf, std::vector<C::AttrSlot>& slots, std::string_view name)
@@ -288,7 +288,7 @@ T* findAttr(C::ClassFile& cf, std::vector<C::AttrSlot>& slots, std::string_view 
     return nullptr;
 }
 
-// —— 注解打印（AnnotationsAttr 的 typed 模型 → Jasm 文本）——
+// 注解打印（AnnotationsAttr 的 typed 模型 → Jasm 文本）
 
 std::string annotationBody(const C::ClassFile& cf, const C::AnnotationsAttr::Annotation& annotation);
 
@@ -423,7 +423,7 @@ void typeAnnotations(std::ostringstream& output, const C::ClassFile& cf,
     }
 }
 
-// —— 方法体打印（promote 后的 CodeUnit：LabelId 边界 + 扁平 Insn）——
+// 方法体打印（promote 后的 CodeUnit：LabelId 边界 + 扁平 Insn）
 
 struct LabelHash final
 {
@@ -442,7 +442,7 @@ public:
     explicit MethodLabels(const IR::CodeUnit& unit)
     {
         //按指令顺序给锚定标签命名（旧栈 LABEL 节点顺序语义）；再给仍被引用、
-        //但锚定在方法末尾（End 边界）的标签续编——它们打印在方法体末尾。
+        //但锚定在方法末尾（End 边界）的标签续编，它们打印在方法体末尾。
         for (const auto id : unit.dom.order()) {
             for (const auto& label : unit.dom.labelsAt(id)) {
                 if (names_.count(label) == 0)
@@ -580,7 +580,7 @@ std::string instruction(const C::ClassFile& cf, const C::BootstrapMethodsAttr* b
         case C::Op::INSTANCEOF:
         case C::Op::ANEWARRAY:
             // anewarray 的 CP 名按原样打印：JVMS 口径是组件类型；旧栈自产
-            // 字节是数组描述符——剥 '[' 会把组件形态误判为非法，装配侧两种
+            // 字节是数组描述符，剥 '[' 会把组件形态误判为非法，装配侧两种
             // 形态都接受（描述符名进 anewarray 语义即组件为该数组类）。
             return opcode + " " + literal(cf.cp.utf8Of(cf.cp.at(in.cp).a));
         case C::Op::MULTIANEWARRAY:
@@ -648,7 +648,7 @@ void printMethodDeclaration(std::ostringstream& output, IR::ClassSession& sessio
     IR::CodeUnitRef unit = std::move(promoted).unwrap();
 
     MethodLabels labels(*unit);
-    //LineNumberTable：行号挂在指令 pc 上，按旧栈「跟在标签行之后」的版式打印。
+    //LineNumberTable：行号挂在指令 pc 上，按旧栈跟在标签行之后的版式打印。
     std::unordered_map<ca::u32, std::vector<ca::i32>> lines;
     auto decodedCode = cf.decodeCode(m);
     if (C::CodeAttr* code = decodedCode.is_ok() ? decodedCode.unwrap() : nullptr) {

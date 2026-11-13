@@ -251,8 +251,8 @@ const char* kGateSource = R"jasm(.sourcefile "Gate.jasm"
 }   //namespace
 
 //孤立代理语料：一个常量携带孤立低代理（U+DC31 的 CESU-8 三字节形），
-//另一个携带合法代理对（U+1F037）——锁「孤立落 \uXXXX、成对保持原样」
-//的双形态契约。
+//另一个携带合法代理对（U+1F037），锁孤立落 \uXXXX、成对保持原样的
+//双形态契约。
 const char* kLoneSource = R"jasm(.super java/lang/Object
 .class public super Lone {
 
@@ -308,7 +308,7 @@ int main(int argc, char** argv)
 
     //3b. 孤立代理（lone surrogate）：CP Utf8 携带 CESU-8 代理三字节形时，
     //    Utf16String 承载不了孤立单元的标准 UTF-8 重编码（to_utf8_string
-    //    显式拒绝）——文本面落 \uXXXX 转义（合法代理对保持增补平面字符
+    //    显式拒绝），文本面落 \uXXXX 转义（合法代理对保持增补平面字符
     //    呈现），装配侧 unescape + modifiedUtf8 逐位还原，往返字节稳定。
     {
         auto lone = jhasm::assemble(utf16s("Lone.jasm"), utf16s(kLoneSource).ref());
@@ -336,7 +336,7 @@ int main(int argc, char** argv)
     }
 
     //4. 真实 classfile 语料：文本稳定往返；javac 常量池编排与本项目写入器
-    //   不同序，逐字节对齐原文件不可达，改验自幂等——重建 bytes 再过一轮
+    //   不同序，逐字节对齐原文件不可达，改验自幂等，重建 bytes 再过一轮
     //   必须逐字节一致。
     const std::string corpus = argc > 1 ? argv[1] : "test/smoke/corpus/test_class.class";
     auto classBytes = slurp(corpus);

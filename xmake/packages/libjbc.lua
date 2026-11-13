@@ -7,7 +7,7 @@
 --    UTF-8 中文注释，GBK ACP 的机器上 on_test 探针（has_cxxincludes/
 --    check_cxxsnippets，只吃包元数据的 cxxflags）把多行注释误读合并，枚举
 --    定义被拆散，报 C2059/C2086 级联，安装直接失败（库本体沙箱构建带工程
---    自己的 /utf-8，不受影响——纯 on_test 面）。这里在 on_load 补 /utf-8
+--    自己的 /utf-8，不受影响，纯 on_test 面）。这里在 on_load 补 /utf-8
 --    （windows），与库自身构建口径一致。项目内联的 package() 定义优先于一切
 --    包仓（实测其他目录包仓的同名定义压不过 luiox-repo），是唯一能就地修
 --    探针的承载形态。luiox-repo 的 libjbc 定义补齐 0.4.17 与 /utf-8 后，
@@ -24,7 +24,7 @@
 -- libca 依赖（模块 core,str,crypto,zip），包沙箱内自解析；下方 add_deps 是
 -- 给消费方的传递声明（另一回事，不可省）。libca 版本/模块钉到 root
 -- xmake.lua 的 LUIOX_LIBCA_VERSION/LUIOX_LIBCA_MODULES 单源常量（同一消费图
--- 内各包的 libca (版本, 模块集) 必须完全一致——实例身份 = (版本, configs
+-- 内各包的 libca (版本, 模块集) 必须完全一致，实例身份 = (版本, configs
 -- 哈希)，任何偏差都会多出一个 libca 实例：链接闭包多条 -libpath，同名符号
 -- 双归档，解析次序脆弱）。
 --

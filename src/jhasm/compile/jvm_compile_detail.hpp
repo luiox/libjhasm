@@ -75,7 +75,7 @@ constexpr ca::i32 T_LONG = 11;
 
 /// @brief 编译诊断上下文（thread_local）：编译面是同步栈式调用，compileClass
 ///       在进入成员、CodeCompiler::emit 在发射指令前写入，fail() 与顶层 catch
-///       读取——错误归属成员、Error 保留 jasm 源位置。location 借用 AST 节点，
+///       读取，错误归属成员、Error 保留 jasm 源位置。location 借用 AST 节点，
 ///       只在 compile() 调用栈内有效，DiagGuard 保证任何退出路径清空。
 struct DiagScope final
 {

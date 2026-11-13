@@ -2,14 +2,14 @@
 --
 -- 依赖：
 --   - libjbc（项目内联 git 直连包，xmake/packages/libjbc.lua）：字节码
---     core/ir/analysis/type 面——解析、从零构建、帧分析与保真写回的唯一后端。
+--     core/ir/analysis/type 面：解析、从零构建、帧分析与保真写回的唯一后端。
 --     类型不出现在公开头（实现层私有依赖），下游无需传递引入。
 --   - libca（luiox-repo git 直连包）：字符串/基础面（public 传递）。
 --
 -- 旧栈（libjblw + libjbytecode）已整体退役：编译/分析/打印三面全部改走
 -- libjbc（见 git 历史与 jhasm.hpp 注释）。
 --
--- 仓库注册：本文件不声明 add_repositories——包沙箱会继承宿主的仓库注册，
+-- 仓库注册：本文件不声明 add_repositories，包沙箱会继承宿主的仓库注册，
 -- 在工程内重复注册同名仓库会导致嵌套包构建时 remote 路径错乱。独立开发/CI
 -- 先执行：
 --   xmake repo --add luiox-repo https://github.com/luiox/luiox-repo.git

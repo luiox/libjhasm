@@ -30,7 +30,7 @@ const std::unordered_map<std::string, C::Op>& opcodeTable()
         t.reserve(0xCA + 5);
         for (ca::u32 b = 0; b < 0xCA; ++b) {
             //0xC4 wide 是修饰前缀不是独立指令：jasm 面无显式 wide（宽索引由
-            //装载/变量面自动升格），保留旧栈口径——源文本显式 wide 拒绝。
+            //装载/变量面自动升格），保留旧栈口径，源文本显式 wide 拒绝。
             if (b == 0xC4) continue;
             t.emplace(C::mnemonicOf(static_cast<C::Op>(b)), static_cast<C::Op>(b));
         }
