@@ -7,7 +7,7 @@
 
 namespace jhasm::compile {
 
-// —— 常量规格（Jasm 常量字面 → CP 落位前的事实描述；Dynamic 族递归）——
+// 常量规格（Jasm 常量字面 → CP 落位前的事实描述；Dynamic 族递归）
 
 struct ConstSpec final
 {
