@@ -16,3 +16,6 @@ markdown 只承载流程文档（README 等）。
 .. toctree::
    :maxdepth: 2
    :caption: 设计与契约
+
+   syntax
+   proposal-dialect-rs
