@@ -51,7 +51,7 @@ libjhasm JAsm 语法规范
 
 两条硬规则：
 
-1. 读侧标识符不反转义（``ast/primitive.hpp`` 的 ``Identifier::literal`` 直接返回原文）。源码里 ``\uXXXX`` 进名字的就是 6 个字面字符：``new \u0041`` 生成的类名是 6 字符文本 ``\u0041``，不是 ``A``（实测）。要真字符直接写 UTF-8 原文。
+1. 读侧标识符不反转义（``ast/primitive.hpp`` 的 ``Identifier::literal`` 直接返回原文）。源码里 ``\uXXXX`` 进名字的就是 6 个字面字符：``new \u0041`` 生成的类名是 6 字符文本 ``\u0041``，不是 ``A``\ （实测）。要真字符直接写 UTF-8 原文。
 2. 反斜杠是普通字符，标识符内不做任何转义处理。
 
 大小写敏感。``Foo`` 与 ``foo`` 是两个名字。
@@ -88,10 +88,10 @@ libjhasm JAsm 语法规范
 
 数字 token 由正则整体判定（``tokenizer.cpp`` 的 ``is_number_text``），负号属于数字的一部分。语义展开：
 
-- 十进制整数：``0``、``123``、``1_000``（下划线可在数字之间）。
+- 十进制整数：``0``、``123``、``1_000``\ （下划线可在数字之间）。
 - 十六进制整数：``0x1A``、``0X1a``。
-- 二进制整数：``0b101``（词法接受，语义见下）。
-- 浮点：小数点形 ``1.5`` ``.5`` ``5.``，指数形 ``1e5`` ``1E-3``，十六进制浮点 ``0x1.8p3``（必须有 ``p`` 指数）。
+- 二进制整数：``0b101``\ （词法接受，语义见下）。
+- 浮点：小数点形 ``1.5`` ``.5`` ``5.``，指数形 ``1e5`` ``1E-3``，十六进制浮点 ``0x1.8p3``\ （必须有 ``p`` 指数）。
 - 后缀：整数分支可带 ``L l F f D d``，浮点分支可带 ``F f D d``。``5F`` 是 float，``5D`` 是 double，``5L`` 是 long，``1e5`` 无后缀但含指数，是 double。
 - 单独的 ``-`` 是标识符不是数字。
 
@@ -140,7 +140,7 @@ libjhasm JAsm 语法规范
 3.1 通用形态与挂载
 ^^^^^^^^^^^^^^^^^^
 
-声明以点前缀关键字起头，后跟元素序列，元素终止于 ``}``、``,`` 或下一个点声明。未知关键字报 ``Unknown declaration``（``ast_processor.cpp``）。
+声明以点前缀关键字起头，后跟元素序列，元素终止于 ``}``、``,`` 或下一个点声明。未知关键字报 ``Unknown declaration``\ （``ast_processor.cpp``）。
 
 多数类级与成员级声明是待挂属性：按文本顺序落到下一个兼容目标上。挂载关系全表：
 
@@ -163,7 +163,7 @@ libjhasm JAsm 语法规范
      - ``.super <内部名>``
      - 下一个 ``.class``
    * - ``.implements``
-     - ``.implements <内部名>``（可多次）
+     - ``.implements <内部名>``\ （可多次）
      - 下一个 ``.class``
    * - ``.signature``
      - ``.signature "<泛化签名>"``
@@ -179,33 +179,33 @@ libjhasm JAsm 语法规范
      - 下一个 ``.class``
    * - ``.outer-method``
      - ``.outer-method <名> <方法描述符>``
-     - 下一个 ``.class``（配合 ``.outer-class`` 落 EnclosingMethod）
+     - 下一个 ``.class``\ （配合 ``.outer-class`` 落 EnclosingMethod）
    * - ``.nest-host``
      - ``.nest-host <内部名>``
      - 下一个 ``.class``
    * - ``.nest-member``
-     - ``.nest-member <内部名>``（可多次）
+     - ``.nest-member <内部名>``\ （可多次）
      - 下一个 ``.class``
    * - ``.permitted-subclass``
-     - ``.permitted-subclass <内部名>``（可多次）
+     - ``.permitted-subclass <内部名>``\ （可多次）
      - 下一个 ``.class``
    * - ``.record-component``
      - ``.record-component <名> <字段描述符>``
      - 下一个 ``.class`` 的 Record 组件；可前置 ``.signature`` 与注解
-   * - ``.visible-annotation``（别名 ``.annotation``）
+   * - ``.visible-annotation``\ （别名 ``.annotation``）
      - 见 3.6
      - 下一个目标；注解值内部出现时作嵌套注解值
    * - ``.invisible-annotation``
      - 同上
      - 同上
-   * - ``.type-visible-annotation``（别名 ``.type-annotation``）、``.type-invisible-annotation``
+   * - ``.type-visible-annotation``\ （别名 ``.type-annotation``）、``.type-invisible-annotation``
      - 见 3.7
      - 同上
    * - ``.enum``
      - ``.enum <类型> <常量名>``
      - 仅注解值内合法，外部出现报错
 
-类体内只接受 ``.field`` 与 ``.method``（其他报 ``Expected field or method``）；类体内成员级待挂属性（注解、签名）必须被成员消费，否则报 ``Unconsumed class member attributes``。
+类体内只接受 ``.field`` 与 ``.method``\ （其他报 ``Expected field or method``）；类体内成员级待挂属性（注解、签名）必须被成员消费，否则报 ``Unconsumed class member attributes``。
 
 .. _syntax-decl-modifiers:
 
@@ -235,7 +235,7 @@ libjhasm JAsm 语法规范
         .method ...
     }
 
-- 一个编译单元恰好一个类（``jvm_compiler.cpp``）。``implements`` 不是 ``.class`` 行的修饰符，是独立声明，写在 ``.class`` 行里报 ``Invalid modifier``（实测）。
+- 一个编译单元恰好一个类（``jvm_compiler.cpp``）。``implements`` 不是 ``.class`` 行的修饰符，是独立声明，写在 ``.class`` 行里报 ``Invalid modifier``\ （实测）。
 - 类名接受内部名（``demo/Hello``）、``Ldemo/Hello;`` 形态（剥壳落内部名）与数组描述符（原样，``internalNameOf``）。
 - ``.super`` 缺省为空：不写 ``.super`` 时产物 ``super_class`` 落 0（实测，字节级核对），这种 classfile 只有 ``java/lang/Object`` 自身可加载，手写具体类必须显式给 ``.super``。
 - ``super`` 修饰符控制 ACC_SUPER 位（``invokespecial`` 语义依赖），javac 产物普遍带，手写类建议显式写。
@@ -282,7 +282,7 @@ libjhasm JAsm 语法规范
      - 参数名按描述符序分配槽位（4.2）；同时落 MethodParameters 属性，打印不回显
    * - ``exceptions``
      - 四元组数组 ``{ start, end, handler, type }``
-     - 异常表；区间左闭右开；``type`` 为内部名或 ``*``（全捕获）；表序即派发序
+     - 异常表；区间左闭右开；``type`` 为内部名或 ``*``\ （全捕获）；表序即派发序
    * - ``code``
      - 指令块（第 4 节）；``code: { }`` 为空指令体
      - Code 属性
@@ -290,7 +290,7 @@ libjhasm JAsm 语法规范
      - 注解值
      - 注解接口方法的 AnnotationDefault
 
-abstract 或 native 方法用空体 ``{ }``：不落 Code 属性。注意 ``code: { }``（空指令体）不是空体声明的等价写法：它会落一个没有 return 出口的 Code 属性，被帧分析拒绝（实测）。非空体方法会跑完整编译管线：指令发射、帧分析（Strict 策略）、class v50 起生成 StackMapTable、64KB 方法体预检（第 7 节）。
+abstract 或 native 方法用空体 ``{ }``：不落 Code 属性。注意 ``code: { }``\ （空指令体）不是空体声明的等价写法：它会落一个没有 return 出口的 Code 属性，被帧分析拒绝（实测）。非空体方法会跑完整编译管线：指令发射、帧分析（Strict 策略）、class v50 起生成 StackMapTable、64KB 方法体预检（第 7 节）。
 
 .. _syntax-decl-annotation:
 
@@ -325,22 +325,28 @@ abstract 或 native 方法用空体 ``{ }``：不落 Code 属性。注意 ``code
      - 注解整型没有 byte/short 形态
    * - 带 ``L l`` 后缀的整数
      - ``J``
+     -
    * - 带 ``F f`` 后缀的浮点
      - ``F``
+     -
    * - 浮点或带 ``D d`` 后缀
      - ``D``
+     -
    * - ``"text"``
      - ``s``
+     -
    * - ``'c'``
      - ``C``
      - 取首个码元
    * - ``true`` / ``false``
      - ``Z``
+     -
    * - 其他裸词
      - ``c``
      - 类值，按描述符落池
    * - ``.enum T V``
      - ``e``
+     -
    * - ``.annotation T { ... }``
      - ``@``
      - 嵌套注解，可任意深度
@@ -440,11 +446,11 @@ abstract 或 native 方法用空体 ``{ }``：不落 Code 属性。注意 ``code
    * - 类型（内部名）
      - ``new`` ``anewarray`` ``checkcast`` ``instanceof``
    * - 基本类型词
-     - ``newarray``（``boolean`` ``byte`` ``char`` ``short`` ``int`` ``float`` ``long`` ``double``）
+     - ``newarray``\ （``boolean`` ``byte`` ``char`` ``short`` ``int`` ``float`` ``long`` ``double``）
    * - 常量
-     - ``ldc`` ``ldc_w`` ``ldc2_w``（6.2）
+     - ``ldc`` ``ldc_w`` ``ldc2_w``\ （6.2）
    * - 槽位
-     - ``iload`` ``lload`` ``fload`` ``dload`` ``aload`` ``istore`` ``lstore`` ``fstore`` ``dstore`` ``astore`` ``ret``（符号名或槽号）
+     - ``iload`` ``lload`` ``fload`` ``dload`` ``aload`` ``istore`` ``lstore`` ``fstore`` ``dstore`` ``astore`` ``ret``\ （符号名或槽号）
    * - 槽位短格式
      - 上述五装载五存储的 ``_0`` 到 ``_3`` 共 40 个
    * - 槽位加增量
@@ -452,15 +458,15 @@ abstract 或 native 方法用空体 ``{ }``：不落 Code 属性。注意 ``code
    * - 标签
      - ``ifeq`` ``ifne`` ``iflt`` ``ifge`` ``ifgt`` ``ifle`` ``if_icmpeq`` ``if_icmpne`` ``if_icmplt`` ``if_icmpge`` ``if_icmpgt`` ``if_icmple`` ``if_acmpeq`` ``if_acmpne`` ``goto`` ``jsr`` ``ifnull`` ``ifnonnull`` ``jsr_w`` ``goto_w``
    * - 表 switch
-     - ``tableswitch``（6.4）
+     - ``tableswitch``\ （6.4）
    * - 键值 switch
-     - ``lookupswitch``（6.4）
+     - ``lookupswitch``\ （6.4）
    * - 字段
-     - ``getstatic`` ``putstatic`` ``getfield`` ``putfield``（6.5）
+     - ``getstatic`` ``putstatic`` ``getfield`` ``putfield``\ （6.5）
    * - 方法
-     - ``invokevirtual`` ``invokespecial`` ``invokestatic`` ``invokeinterface`` ``invokevirtualinterface`` ``invokestaticinterface`` ``invokespecialinterface``（6.5）
+     - ``invokevirtual`` ``invokespecial`` ``invokestatic`` ``invokeinterface`` ``invokevirtualinterface`` ``invokestaticinterface`` ``invokespecialinterface``\ （6.5）
    * - 动态调用点
-     - ``invokedynamic``（6.6）
+     - ``invokedynamic``\ （6.6）
    * - 数组描述符加维数
      - ``multianewarray``
 
@@ -530,7 +536,7 @@ abstract 或 native 方法用空体 ``{ }``：不落 Code 属性。注意 ``code
 5.3 bipush 与 sipush
 ^^^^^^^^^^^^^^^^^^^^
 
-两条助记符接受整数操作数，但编译为与 ``ldc`` 整数完全相同的形态（常量池 Integer 加 ``ldc``/``ldc_w``，``code_compiler.cpp`` 的 ``insnFor``）。本仓汇编产物里不存在 bipush/sipush 指令；canonical 输出见到 bipush/sipush 只可能来自外部 classfile 的原生指令。
+两条助记符都接受整数操作数。汇编时将它们视为整数 ``ldc``，写入常量池 Integer 并按池索引选用 ``ldc`` 或 ``ldc_w``\ （``code_compiler.cpp`` 的 ``insnFor``）。外部 classfile 的原生指令如何打印见 :ref:`syntax-canonical-behavior`。
 
 .. _syntax-insn-branch:
 
@@ -574,9 +580,9 @@ abstract 或 native 方法用空体 ``{ }``：不落 Code 属性。注意 ``code
 
     invokedynamic apply (Ljava/lang/Object;)Ljava/lang/Runnable; { invokestatic, java/lang/invoke/LambdaMetafactory.metafactory, (Ljava/lang/invoke/MethodHandles$Lookup;Ljava/lang/String;Ljava/lang/invoke/MethodType;Ljava/lang/invoke/MethodType;Ljava/lang/invoke/MethodHandle;Ljava/lang/invoke/MethodType;)Ljava/lang/invoke/CallSite; } { }
 
-四个操作数：调用点名、调用点方法描述符、引导句柄、静态参数数组（空为 ``{ }``）。句柄两种写法：三元素数组 ``{ <kind>, <Owner.name>, <描述符> }``，或短形式 ``LambdaMetafactory.metafactory``（展开为固定全限定句柄）。
+四个操作数：调用点名、调用点方法描述符、引导句柄、静态参数数组（空为 ``{ }``）。句柄两种写法：三元素数组 ``{ <kind>, <Owner.name>, <描述符> }``，或短形式 ``LambdaMetafactory.metafactory``\ （展开为固定全限定句柄）。
 
-句柄 kind 九个：``getfield`` ``getstatic`` ``putfield`` ``putstatic`` ``invokevirtual`` ``invokestatic`` ``invokespecial`` ``newinvokespecial`` ``invokeinterface``（``jvm_compile_detail.hpp``）。字段类句柄的第三元素按字段描述符校验，其余按方法描述符校验。
+句柄 kind 九个：``getfield`` ``getstatic`` ``putfield`` ``putstatic`` ``invokevirtual`` ``invokestatic`` ``invokespecial`` ``newinvokespecial`` ``invokeinterface``\ （``jvm_compile_detail.hpp``）。字段类句柄的第三元素按字段描述符校验，其余按方法描述符校验。
 
 引导方法追加到类级 BootstrapMethods 属性，相同句柄与参数复用既有条目。静态参数是常量十族：整型、long、float、double、String、Class、MethodType、MethodHandle、condy（嵌套 Dynamic，``bsmArgOf``）。
 
@@ -607,9 +613,9 @@ abstract 或 native 方法用空体 ``{ }``：不落 Code 属性。注意 ``code
 6.2 版式
 ^^^^^^^^
 
-顶层顺序：``.inner``（每条一行）→ ``.sourcefile`` → ``.outer-class`` → ``.outer-method`` → ``.nest-host`` → ``.nest-member`` → ``.permitted-subclass`` → record 组件（注解、签名、``.record-component``）→ 类注解四形 → ``.signature`` → ``.super``（非空才打印）→ ``.implements`` → ``.class`` 行 → 字段 → 空行 → 方法 → ``}``。
+顶层顺序：``.inner``\ （每条一行）→ ``.sourcefile`` → ``.outer-class`` → ``.outer-method`` → ``.nest-host`` → ``.nest-member`` → ``.permitted-subclass`` → record 组件（注解、签名、``.record-component``）→ 类注解四形 → ``.signature`` → ``.super``\ （非空才打印）→ ``.implements`` → ``.class`` 行 → 字段 → 空行 → 方法 → ``}``。
 
-字段各自的前置注解与签名缩进 4 空格打在 ``.field`` 行之前；方法同理。方法间空一行，字段间不空。方法声明体内先 ``exceptions``（有才打，段尾带逗号）后 ``code``。``code`` 内标签缩进 8 空格（``L0:``），指令与 ``line`` 缩进 12 空格；锚定在方法体末尾的标签按名字排序打在最后。
+字段各自的前置注解与签名缩进 4 空格打在 ``.field`` 行之前；方法同理。方法间空一行，字段间不空。方法声明体内先 ``exceptions``\ （有才打，段尾带逗号）后 ``code``。``code`` 内标签缩进 8 空格（``L0:``），指令与 ``line`` 缩进 12 空格；锚定在方法体末尾的标签按名字排序打在最后。
 
 abstract/native 方法打 ``{ }`` 空体。
 
@@ -627,12 +633,15 @@ abstract/native 方法打 ``{ }`` 空体。
      - 按锚定顺序重编号为 ``L0`` 起步；未被分支或异常表引用的标签直接消失（4.1）
    * - ``parameters`` 名字
      - 不回显，一切局部变量按槽位号打印；槽 0 到 3 打 ``_N`` 短格式（``iload_0``），其余打长格式（``iload 4``）
-   * - ``bipush``/``sipush``（本仓汇编产生）
-     - 已在编译期并成 ``ldc``
+   * - 汇编文本中的 ``bipush``/``sipush``
+     - 汇编后统一打印为 ``ldc``
+   * - 外部 classfile 的原生 ``bipush``/``sipush``
+     - 按原 opcode 打印助记符和十进制立即数（源码推断，``jvm_printer.cpp`` 的
+       ``Imm1``/``Imm2`` 分支）。重新汇编并打印后，文本中的相应指令会变为 ``ldc``
    * - ``ldc_w`` / ``ldc2_w`` 输入拼写
      - 按常量类别归一：cat1 恒打 ``ldc``，cat2 恒打 ``ldc2_w``；输入拼写与池索引宽度不回显
    * - ``ldc 'e'``
-     - ``ldc 101``（Integer 十进制）
+     - ``ldc 101``\ （Integer 十进制）
    * - float/double 字面量
      - ``%.9g`` / ``%.17g`` 可往返表示，剥指数正号，无小数点与指数时补 ``.0``，带 ``F``/``D`` 后缀；实测 ``ldc 3.14F`` 打 ``ldc 3.1400001F``、``ldc 0.1`` 打 ``ldc2_w 0.10000000000000001D``；NaN 与无穷打 ``NaNF``/``NaND``/``InfinityF``/``InfinityD`` 形态（无穷恒带后缀）
    * - long 字面量
@@ -652,9 +661,11 @@ abstract/native 方法打 ``{ }`` 空体。
    * - ``invokedynamic``
      - 长形式四段；BootstrapMethods 内联进调用点，不单独成节
    * - ``.inner``
-     - 键序固定 ``name``（有则打）、``inner``、``outer``（有则打）
+     - 键序固定 ``name``\ （有则打）、``inner``、``outer``\ （有则打）
    * - MethodParameters、StackMapTable、Deprecated、SourceDebugExtension
      - 不打印（MethodParameters 的参数名信息在 canonical 中不可恢复）
+
+拟议的反汇编行为见 :doc:`proposal-dialect-rs`。
 
 .. _syntax-canonical-gap:
 
@@ -687,7 +698,7 @@ abstract/native 方法打 ``{ }`` 空体。
 只列经本仓源码核对的条目；上游行为以 ``D:\WorkSpace\Jasm`` checkout（revision ``aacebfa``）为参照。
 
 1. 标识符反转义语义相反：上游把标识符里的 ``\uXXXX`` 求值为对应字符；本仓原样保留（1.4）。
-2. 字符串换行的 canonical 形态：上游打 ``\n`` 短形式；本仓打 ``\u000A``（``escape_string``）。
+2. 字符串换行的 canonical 形态：上游打 ``\n`` 短形式；本仓打 ``\u000A``\ （``escape_string``）。
 3. 常量装载的归一方向相反。读侧两个方言一致，都注册 ``ldc``/``ldc_w``/``ldc2_w`` 三个拼写并进同一常量装载语义（上游三拼写都进 ``visitLdcInsn`` 单口）。canonical 打印侧相反：上游把小值常量折叠成 ``iconst_N``/``bipush``/``sipush``/``lconst_N``/``fconst_N``/``dconst_N``，其余恒打 ``ldc``，cat2 也不打 ``ldc2_w``；本仓把 push 类编译期并入 ``ldc``，cat2 打 ``ldc2_w``，``ldc_w`` 永不回显。
 4. 标签重编号、槽位索引化、``parameters`` 不回显等规范化行为以本仓 printer 为准（6.3）。
 
@@ -754,4 +765,4 @@ abstract/native 方法打 ``{ }`` 空体。
 - 打印：``src/jhasm/printer/jvm_printer.cpp``、``src/jhasm/util/escape_util.cpp``
 - 公开 API：``src/jhasm/jhasm.hpp``、``compile/jvm_compiler.hpp``
 
-实测依据分两层。一层是 ``test/smoke/roundtrip_smoke.cpp``（汇编、分析、规范化稳定与真实语料往返）。另一层是写作本文时用 0.3.3 现场构建的探针逐条运行复核的约 30 项行为断言：``bipush`` 并入 ``ldc``、``0b`` 截断落 0、负十六进制在 ``ldc`` 位正常落值而在整数操作数位拒绝、下划线截断、``ldc true`` 拒绝、字段布尔常量落 ``1``、标识符不反转义、未知字符串转义吞字符、换行 canonical 为 ``\u000A``、``_N`` 短格式回显、未引用标签消失、``lookupswitch`` 键排序、``tableswitch`` max 推导、无 ``.super`` 时 super_class 落 0（字节级核对）、空 code 体拒绝、尾逗号接受、标签与指令同行可解析、``ldc_w`` 打 ``ldc``、float 打 ``%.9g`` 形态、无后缀浮点按 double 打 ``%.17g``、Class 与 MethodType 常量往返、接口助记符往返、异常表 ``*`` 往返、类型注解读合法写不对称、``parameters`` 不回显。标注（源码推断）的条目：无。若后续实现与本文冲突，以实现为准并回改本文。
+实测依据分两层。一层是 ``test/smoke/roundtrip_smoke.cpp``\ （汇编、分析、规范化稳定与真实语料往返）。另一层是写作本文时用 0.3.3 现场构建的探针逐条运行复核的约 30 项行为断言：``bipush`` 并入 ``ldc``、``0b`` 截断落 0、负十六进制在 ``ldc`` 位正常落值而在整数操作数位拒绝、下划线截断、``ldc true`` 拒绝、字段布尔常量落 ``1``、标识符不反转义、未知字符串转义吞字符、换行 canonical 为 ``\u000A``、``_N`` 短格式回显、未引用标签消失、``lookupswitch`` 键排序、``tableswitch`` max 推导、无 ``.super`` 时 super_class 落 0（字节级核对）、空 code 体拒绝、尾逗号接受、标签与指令同行可解析、``ldc_w`` 打 ``ldc``、float 打 ``%.9g`` 形态、无后缀浮点按 double 打 ``%.17g``、Class 与 MethodType 常量往返、接口助记符往返、异常表 ``*`` 往返、类型注解读合法写不对称、``parameters`` 不回显。外部 classfile 的原生 ``bipush``/``sipush`` 打印行为见 :ref:`syntax-canonical-behavior` 中标注的源码推断。若后续实现与本文冲突，以实现为准并回改本文。
