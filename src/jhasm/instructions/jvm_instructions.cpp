@@ -295,7 +295,8 @@ bool JvmInstructions::verify(const ast::Instruction& instruction,
     for (ca::usize index = 0; index < spec->operands.size(); ++index) {
         const auto& argument = arguments[index + firstOperand];
         if (!verifyOperand(spec->operands[index], argument)) {
-            addError(errors, "Invalid JVM instruction operand", argument ? *argument : instruction);
+            const ast::Element* diagnosticElement = argument ? argument.get() : &instruction;
+            addError(errors, "Invalid JVM instruction operand", *diagnosticElement);
             valid = false;
         }
     }
