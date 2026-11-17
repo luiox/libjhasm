@@ -9,6 +9,7 @@
 
 #include <libca/str/utf8_string.hpp>
 
+#include <charconv>
 #include <memory>
 #include <string>
 #include <vector>
@@ -20,9 +21,44 @@ namespace {
 namespace C  = jbc::core;
 namespace IR = jbc::ir;
 
-std::vector<ca::u8> compileClass(const ast::Class& clazz, const JvmCompilerOptions& options)
+ca::u16 readMaxValue(const ast::ElementPtr& value, const char* name)
 {
-    DiagGuard diagGuard;
+    ca::u16 result = 0;
+    if (value && value->getType() == ast::ElementKind::NUMBER) {
+        const auto text = narrow(*value);
+        const bool hex = text.size() > 2 && text[0] == '0' && (text[1] == 'x' || text[1] == 'X');
+        const auto end = text.data() + text.size();
+        const auto parsed = std::from_chars(text.data() + (hex ? 2 : 0), end, result, hex ? 16 : 10);
+        if (parsed.ec == std::errc{} && parsed.ptr == end) return result;
+    }
+    if (value && value->location()) diagScope().location = value->location();
+    fail(std::string("maxs ") + name + " must be an integer in 0..65535");
+}
+
+std::optional<RawMaxs> readMaxs(const ast::Method& method, JvmDialect dialect, bool verify)
+{
+    if (dialect != JvmDialect::R) return std::nullopt;
+    const auto& value = method.maxs();
+    if (!value) {
+        if (method.code() && !verify) fail("R dialect with verify disabled requires maxs");
+        return std::nullopt;
+    }
+    if (value->location()) diagScope().location = value->location();
+    if (!method.code()) fail("maxs requires a method code body");
+    const auto object = ast::elementAs<ast::Object>(value, ast::ElementKind::OBJECT);
+    const auto stackKey = ca::str::Utf16String::value_of("stack");
+    const auto localsKey = ca::str::Utf16String::value_of("locals");
+    if (!object || object->values().size() != 2 || !object->value(stackKey.ref()) ||
+        !object->value(localsKey.ref()))
+        fail("maxs requires exactly the stack and locals entries");
+    return RawMaxs{readMaxValue(object->value(stackKey.ref()), "stack"),
+                   readMaxValue(object->value(localsKey.ref()), "locals")};
+}
+
+std::vector<ca::u8> compileClass(const ast::Class& clazz, const JvmCompilerOptions& options,
+                                 std::vector<error::Warn>& warnings)
+{
+    const auto dialect = options.dialect.value_or(JvmDialect::S);
     auto&     diag = diagScope();
     const std::string thisName = internalNameOf(*clazz.name());
     diag.member   = "class " + thisName;
@@ -177,6 +213,8 @@ std::vector<ca::u8> compileClass(const ast::Class& clazz, const JvmCompilerOptio
                 fail("Invalid method descriptor");
             const bool isStatic = (access(method->modifiers()) & ACC_STATIC) != 0;
             const bool withCode = method->code() != nullptr;
+            const auto maxs = readMaxs(*method, dialect, options.verify);
+            diag.location = method->location();
 
             IR::MethodSeed methodSeed;
             methodSeed.name   = name;
@@ -220,10 +258,13 @@ std::vector<ca::u8> compileClass(const ast::Class& clazz, const JvmCompilerOptio
                 auto promoted = IR::promoteMethod(*session, id);
                 if (promoted.is_err()) fail("Method body promote failed");
                 IR::CodeUnitRef unit = std::move(promoted).unwrap();
-                CodeCompiler compiler(*session, unit, *method, descriptor);
+                CodeCompiler compiler(*session, unit, *method, descriptor, dialect, options.verify);
                 compiler.compile();
+                diag.location = method->maxs() && method->maxs()->location()
+                                    ? method->maxs()->location()
+                                    : method->location();
                 finishBody(*session, id, *unit, compiler.lineRows(), options, name, descriptor,
-                           isStatic);
+                           isStatic, dialect, maxs, warnings);
             }
         }
     }
@@ -256,9 +297,12 @@ error::Result<JvmCompileResult> JvmCompiler::compile(
 
 error::Result<JvmCompileResult> JvmCompiler::compile(const ast::Class& clazz) const
 {
+    DiagGuard diagGuard;
+    std::vector<error::Warn> warnings;
     try {
-        auto bytes = compileClass(clazz, options_);
-        return error::Result<JvmCompileResult>::ok({std::move(bytes)});
+        auto bytes = compileClass(clazz, options_, warnings);
+        return error::Result<JvmCompileResult>(JvmCompileResult{std::move(bytes)}, {},
+                                                std::move(warnings));
     }
     catch (const std::exception& exception) {
         auto message = util::utf16(exception.what());
@@ -270,7 +314,8 @@ error::Result<JvmCompileResult> JvmCompiler::compile(const ast::Class& clazz) co
             errors.emplace_back(message.ref(), *location);
         else
             errors.emplace_back(message.ref());
-        return error::Result<JvmCompileResult>::err(std::move(errors));
+        return error::Result<JvmCompileResult>(std::nullopt, std::move(errors),
+                                                std::move(warnings));
     }
 }
 

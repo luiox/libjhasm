@@ -76,7 +76,7 @@ constexpr ca::i32 T_LONG = 11;
 /// @brief 编译诊断上下文（thread_local）：编译面是同步栈式调用，compileClass
 ///       在进入成员、CodeCompiler::emit 在发射指令前写入，fail() 与顶层 catch
 ///       读取，错误归属成员、Error 保留 jasm 源位置。location 借用 AST 节点，
-///       只在 compile() 调用栈内有效，DiagGuard 保证任何退出路径清空。
+///       只在 compile() 调用栈内有效，DiagGuard 在退出时恢复调用方上下文。
 struct DiagScope final
 {
     std::string           member;    ///< 归属成员文本，如 "method foo(I)V"。
@@ -89,24 +89,19 @@ inline DiagScope& diagScope()
     return scope;
 }
 
-/// @brief compile() 入口挂 RAII 清空：不向调用外借出悬垂 AST 指针。
+/// @brief 为本次 compile() 建立诊断上下文，支持回调中再次调用 compile()。
 class DiagGuard final
 {
 public:
     DiagGuard()
-    {
-        auto& scope   = diagScope();
-        scope.member   = {};
-        scope.location = nullptr;
-    }
-    ~DiagGuard()
-    {
-        auto& scope   = diagScope();
-        scope.member   = {};
-        scope.location = nullptr;
-    }
+        : previous_(std::exchange(diagScope(), DiagScope{}))
+    {}
+    ~DiagGuard() { diagScope() = std::move(previous_); }
     DiagGuard(const DiagGuard&)            = delete;
     DiagGuard& operator=(const DiagGuard&) = delete;
+
+private:
+    DiagScope previous_;
 };
 
 [[noreturn]] inline void fail(const std::string& message)

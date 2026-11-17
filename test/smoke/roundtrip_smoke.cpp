@@ -179,9 +179,9 @@ void checkBytesEqual(const std::vector<ca::u8>& expected, const std::vector<ca::
 
 /// @brief disassemble → assemble → disassemble：断言文本稳定，返回再装配 bytes。
 bool textStable(const std::vector<ca::u8>& bytes, std::vector<ca::u8>& rebuilt,
-                const std::string& tag)
+                const std::string& tag, jhasm::JvmDialect dialect = jhasm::JvmDialect::S)
 {
-    auto text0 = jhasm::disassemble(bytes);
+    auto text0 = jhasm::disassemble(bytes, dialect);
     if (!text0.has_value()) {
         printf("[FAIL] %s disassemble\n", tag.c_str());
         for (const auto& error : text0.errors())
@@ -198,7 +198,7 @@ bool textStable(const std::vector<ca::u8>& bytes, std::vector<ca::u8>& rebuilt,
         return false;
     }
     rebuilt = reassembled.get()->bytes;
-    auto text1 = jhasm::disassemble(rebuilt);
+    auto text1 = jhasm::disassemble(rebuilt, dialect);
     if (!text1.has_value()) {
         printf("[FAIL] %s second disassemble\n", tag.c_str());
         for (const auto& error : text1.errors())
@@ -212,6 +212,21 @@ bool textStable(const std::vector<ca::u8>& bytes, std::vector<ca::u8>& rebuilt,
     }
     return stable;
 }
+
+const char* kDialectSource = R"jasm(//! dialect r
+.super java/lang/Object
+.class public super DialectProbe {
+    .method public static probe ()V {
+        code: {
+            bipush -128
+            pop
+            sipush -32768
+            pop
+            return
+        }
+    }
+}
+)jasm";
 
 
 //JVM 加载门载体（#3 形态去特征）：try 范围只覆盖不可抛指令（iload/ifeq/
@@ -355,40 +370,51 @@ int main(int argc, char** argv)
     //5. JVM 加载门：装配产物经 java -Xverify:all 真实加载验收。java 缺席
     //   时跳过（JDK 缺失环境不阻塞其余 smoke 契约）。
     {
-        auto gate = jhasm::assemble(utf16s("Gate.jasm"), utf16s(kGateSource).ref());
-        if (!gate.has_value()) {
-            check(false, "gate assemble");
-            for (const auto& error : gate.errors())
-                printf("       %s\n", narrow(error.message()).c_str());
-        }
-        else {
-            const int javaProbe =
+        const int javaProbe =
 #ifdef _WIN32
-                std::system("java -version >nul 2>&1");
+            std::system("java -version >nul 2>&1");
 #else
-                std::system("java -version >/dev/null 2>&1");
+            std::system("java -version >/dev/null 2>&1");
 #endif
-            if (javaProbe != 0) {
-                printf("[skip] java not on PATH; JVM load gate skipped\n");
+        for (const auto dialect : {jhasm::JvmDialect::S, jhasm::JvmDialect::R}) {
+            jhasm::compile::JvmCompilerOptions options;
+            options.dialect = dialect;
+            const auto gate = jhasm::assemble(utf16s("Gate.jasm"), utf16s(kGateSource).ref(), options);
+            const std::string tag = dialect == jhasm::JvmDialect::S ? "S" : "R";
+            if (!gate.is_ok()) {
+                check(false, tag + " gate assemble");
+                for (const auto& error : gate.errors())
+                    printf("       %s\n", narrow(error.message()).c_str());
+                continue;
             }
-            else {
-                namespace fs = std::filesystem;
-                const fs::path dir = fs::temp_directory_path() / "jhasm_gate_smoke";
-                std::error_code ec;
-                fs::remove_all(dir, ec);
-                fs::create_directories(dir);
-                {
-                    std::ofstream out(dir / "Gate.class", std::ios::binary);
-                    out.write(reinterpret_cast<const char*>(gate.get()->bytes.data()),
-                              static_cast<std::streamsize>(gate.get()->bytes.size()));
-                }
-                const std::string cmd =
-                    "java -Xverify:all -cp " + dir.string() + " Gate";
-                const int rc = std::system(cmd.c_str());
-                check(rc == 0, "jvm load gate (java -Xverify:all)");
-                fs::remove_all(dir, ec);
+            if (javaProbe != 0) continue;
+
+            namespace fs = std::filesystem;
+            const fs::path dir = fs::temp_directory_path() / "jhasm_gate_smoke";
+            std::error_code ec;
+            fs::remove_all(dir, ec);
+            fs::create_directories(dir);
+            {
+                std::ofstream out(dir / "Gate.class", std::ios::binary);
+                out.write(reinterpret_cast<const char*>(gate.get()->bytes.data()),
+                          static_cast<std::streamsize>(gate.get()->bytes.size()));
             }
+            const std::string cmd = "java -Xverify:all -cp \"" + dir.string() + "\" Gate";
+            const int rc = std::system(cmd.c_str());
+            check(rc == 0, tag + " jvm load gate (java -Xverify:all)");
+            fs::remove_all(dir, ec);
         }
+        if (javaProbe != 0) printf("[skip] java not on PATH; JVM load gate skipped\n");
+    }
+
+    // 同一原生 push 语料分别覆盖 R 的形态保留和 S 的 canonical 归一往返。
+    auto raw = jhasm::assemble(utf16s("DialectProbe.jasm"), utf16s(kDialectSource).ref());
+    check(raw.is_ok(), "R native push fixture assembles");
+    if (raw.is_ok()) {
+        std::vector<ca::u8> rebuilt;
+        check(textStable(raw.get()->bytes, rebuilt, "R native push", jhasm::JvmDialect::R),
+              "R native push text stable");
+        check(textStable(raw.get()->bytes, rebuilt, "S native push"), "S native push text stable");
     }
 
     printf(failures == 0 ? "SMOKE PASS\n" : "SMOKE FAIL (%d)\n", failures);

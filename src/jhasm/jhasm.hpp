@@ -18,6 +18,7 @@ const char* get_lib_version() noexcept;
 const char* get_upstream_revision() noexcept;
 
 /// @brief 执行完整 Jasm JVM 汇编流水线并返回 classfile bytes。
+/// @details 首行 ``//! dialect r`` 声明 R 方言，与显式 API 方言冲突时返回错误。
 /// @return 失败时返回错误诊断：AST 归属的语义/装配错误保留 jasm 源位置，
 ///         流水线内部错误无位置；前置阶段失败时 warnings 一并透出。
 error::Result<compile::JvmCompileResult> assemble(ca::str::Utf16StringRef     sourceName,
@@ -29,6 +30,10 @@ error::Result<compile::JvmCompileResult> assemble(ca::str::Utf16StringRef     so
 ///         解释的结构（成员级失败带 ``in <member>`` 前缀）。
 error::Result<ca::str::Utf16String> disassemble(const std::vector<ca::u8>& classBytes);
 
+/// @brief 按指定方言反汇编 classfile。R 输出首行方言标记。
+error::Result<ca::str::Utf16String> disassemble(const std::vector<ca::u8>& classBytes,
+                                                JvmDialect dialect);
+
 /// @brief 将 classfile 中指定的方法反汇编为规范化 Jasm 声明。
 ///
 /// 方法名与 descriptor 必须同时给出以消除重载歧义。返回的文本不包含外围 `.class` 声明，
@@ -36,6 +41,12 @@ error::Result<ca::str::Utf16String> disassemble(const std::vector<ca::u8>& class
 error::Result<ca::str::Utf16String> disassembleMethod(const std::vector<ca::u8>&    classBytes,
                                                        ca::str::Utf8StringRef methodName,
                                                        ca::str::Utf8StringRef descriptor);
+
+/// @brief 按指定方言反汇编单个方法声明，调用方决定外围 class 文本的方言。
+error::Result<ca::str::Utf16String> disassembleMethod(const std::vector<ca::u8>& classBytes,
+                                                     ca::str::Utf8StringRef methodName,
+                                                     ca::str::Utf8StringRef descriptor,
+                                                     JvmDialect dialect);
 
 /// @brief 分析 classfile 中全部非 abstract/native 方法并返回 owning frame 快照。
 /// @return 字节不可读时返回无值错误；分析途中单个方法失败记入 errors，

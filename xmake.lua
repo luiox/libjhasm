@@ -78,6 +78,7 @@ if has_config("with_tests") then
         add_files("test/unittest/opcode_table_test.cpp")
         add_files("test/unittest/error_path_test.cpp")
         add_files("test/unittest/code_size_test.cpp")
+        add_files("test/unittest/dialect_test.cpp")
         add_includedirs("src")
         set_rundir("$(projectdir)")
 

@@ -66,10 +66,17 @@ TEST(assemble_code_size, far_goto_compiles_via_auto_widening)
         "        }\n"
         "    }\n"
         "}";
-    const auto result = jhasm::assemble(u16("t.jasm"), u16(source), {});
-    ASSERT_TRUE(result.has_value());
-    for (const auto& e : result.errors()) {
-        ADD_FAILURE() << messageOf(e);
+    for (const auto dialect : {jhasm::JvmDialect::S, jhasm::JvmDialect::R}) {
+        SCOPED_TRACE(dialect == jhasm::JvmDialect::S ? "S" : "R");
+        jhasm::compile::JvmCompilerOptions options;
+        options.dialect = dialect;
+        const auto result = jhasm::assemble(u16("t.jasm"), u16(source), options);
+        for (const auto& e : result.errors()) ADD_FAILURE() << messageOf(e);
+        ASSERT_TRUE(result.is_ok());
+        const auto printed = jhasm::disassemble(result.get()->bytes, jhasm::JvmDialect::R);
+        for (const auto& e : printed.errors()) ADD_FAILURE() << messageOf(e);
+        ASSERT_TRUE(printed.is_ok());
+        EXPECT_NE(printed.get()->to_utf8_string().to_std_string().find("goto_w "),
+                  std::string::npos);
     }
-    ASSERT_FALSE(result.get()->bytes.empty());
 }

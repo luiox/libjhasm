@@ -2,10 +2,12 @@
 
 #include "jhasm/ast/specific.hpp"
 #include "jhasm/analysis/inheritance_checker.hpp"
+#include "jhasm/dialect.hpp"
 #include "jhasm/error/result.hpp"
 
 #include <libca/core/datatype.hpp>
 
+#include <optional>
 #include <vector>
 
 namespace jhasm::compile {
@@ -18,6 +20,10 @@ struct JvmCompilerOptions final
     ca::u16 minorVersion = 0;
     /// @brief 非拥有指针；非空时用于 StackMap frame 的 common-super 计算。
     const analysis::InheritanceChecker* inheritance = nullptr;
+    /// @brief 文本无首行标记时使用的方言，未指定时缺省为 S。
+    std::optional<JvmDialect> dialect;
+    /// @brief R 方言是否运行 JVM 帧分析与语义检查。S 始终运行分析。
+    bool verify = true;
 };
 
 struct JvmCompileResult final

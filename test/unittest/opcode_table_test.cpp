@@ -42,7 +42,7 @@ TEST(opcode_table, every_standard_mnemonic_reverse_maps)
             continue;
         }
         if (b == 0xC4) {
-            // wide 是修饰前缀不是独立指令：jasm 无显式 wide，编译面拒绝。
+            // R 文本显式 wide 修饰下一条槽位指令，opcode() 无独立映射。
             EXPECT_THROW(jhasm::compile::opcode(u16(name).ref()), std::invalid_argument) << name;
             continue;
         }
@@ -85,7 +85,7 @@ TEST(opcode_table, syntax_table_names_all_compilable)
 TEST(opcode_table, every_libjbc_mnemonic_present_in_syntax_table)
 {
     for (ca::u32 b = 0; b < 0xCA; ++b) {
-        if (b == 0xC4) continue;   //wide 前缀：jasm 面无显式形态
+        if (b == 0xC4) continue;   //R 文本 wide 是前缀，不登记为独立指令
         const std::string name(jbc::core::mnemonicOf(static_cast<Op>(b)));
         const auto*       spec =
             jhasm::instructions::JvmInstructions::instance().find(u16(name).ref());
