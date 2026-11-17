@@ -519,15 +519,17 @@ const char* newArrayType(ca::i32 operand)
 
 
 std::string instruction(const C::ClassFile& cf, const C::BootstrapMethodsAttr* bsm,
-                        const IR::Insn& in, const MethodLabels& labels)
+                        const IR::Insn& in, const MethodLabels& labels, JvmDialect dialect)
 {
-    const std::string opcode = lowerOpcode(in.op);
+    const std::string opcode =
+        (dialect == JvmDialect::R && in.wide ? "wide " : "") + lowerOpcode(in.op);
     switch (C::shapeOf(in.op)) {
     case C::Shape::None: return opcode;
     case C::Shape::Imm1:
-    case C::Shape::Imm2: return opcode + " " + std::to_string(in.a);
+    case C::Shape::Imm2:
+        return (dialect == JvmDialect::S ? "ldc" : opcode) + " " + std::to_string(in.a);
     case C::Shape::Local1: return opcode + " " + std::to_string(in.a);
-    case C::Shape::Iinc1: return "iinc " + std::to_string(in.a) + " " + std::to_string(in.b);
+    case C::Shape::Iinc1: return opcode + " " + std::to_string(in.a) + " " + std::to_string(in.b);
     case C::Shape::Atype1: return opcode + " " + newArrayType(in.a);
     case C::Shape::CP1:
     case C::Shape::CP2:
@@ -538,7 +540,8 @@ std::string instruction(const C::ClassFile& cf, const C::BootstrapMethodsAttr* b
         case C::Op::LDC:
         case C::Op::LDC_W:
         case C::Op::LDC2_W:
-            return (in.op == C::Op::LDC2_W ? "ldc2_w " : "ldc ") + constant(cf, bsm, in.cp);
+            return (dialect == JvmDialect::S && in.op == C::Op::LDC_W ? "ldc" : opcode) +
+                   " " + constant(cf, bsm, in.cp);
         case C::Op::GETSTATIC:
         case C::Op::PUTSTATIC:
         case C::Op::GETFIELD:
@@ -613,8 +616,36 @@ std::string instruction(const C::ClassFile& cf, const C::BootstrapMethodsAttr* b
     }
 }
 
+void printMaxs(std::ostringstream& output, ca::u16 stack, ca::u16 locals)
+{
+    output << "        maxs: { stack: " << stack << ", locals: " << locals << " },\n";
+}
+
+bool printEmptyCode(std::ostringstream& output, const C::ClassFile& cf, const C::MemberInfo& method)
+{
+    const auto code = std::find_if(method.attrs.begin(), method.attrs.end(), [&](const auto& attr) {
+        return cf.cp.utf8Equals(attr.nameCp, "Code");
+    });
+    if (code == method.attrs.end()) return false;
+
+    // libjbc 拒绝解码零长 Code。r 只识别无指令、无异常表和无嵌套属性的空 Code。
+    const auto bytes = cf.source().spanOrEmpty(code->data);
+    if (bytes.size() != 12) return false;
+    C::Cursor cursor(bytes);
+    const auto stack = cursor.u16().unwrap();
+    const auto locals = cursor.u16().unwrap();
+    if (cursor.u32().unwrap() != 0 || cursor.u16().unwrap() != 0 || cursor.u16().unwrap() != 0)
+        return false;
+
+    output << " {\n";
+    printMaxs(output, stack, locals);
+    output << "        code: { }\n    }\n";
+    return true;
+}
+
 void printMethodDeclaration(std::ostringstream& output, IR::ClassSession& session,
-                            ca::usize methodIdx, const C::BootstrapMethodsAttr* bsm)
+                            ca::usize methodIdx, const C::BootstrapMethodsAttr* bsm,
+                            JvmDialect dialect)
 {
     C::ClassFile& cf = session.backing();
     C::MemberInfo& m = cf.methods[methodIdx];
@@ -642,9 +673,12 @@ void printMethodDeclaration(std::ostringstream& output, IR::ClassSession& sessio
         return;
     }
     auto promoted = IR::promoteMethod(session, methodIdx);
-    if (promoted.is_err())
+    if (promoted.is_err()) {
+        if (dialect == JvmDialect::R && promoted.unwrap_err() == IR::PromoteError::AttrNotDecoded &&
+            printEmptyCode(output, cf, m)) return;
         throw std::invalid_argument("Method body promote failed: " +
                                     std::string(IR::to_string(promoted.unwrap_err())));
+    }
     IR::CodeUnitRef unit = std::move(promoted).unwrap();
 
     MethodLabels labels(*unit);
@@ -660,6 +694,7 @@ void printMethodDeclaration(std::ostringstream& output, IR::ClassSession& sessio
     }
 
     output << " {\n";
+    if (dialect == JvmDialect::R) printMaxs(output, unit->maxStack, unit->maxLocals);
     if (!unit->exc.empty()) {
         output << "        exceptions: {\n";
         for (ca::usize index = 0; index < unit->exc.size(); ++index) {
@@ -681,7 +716,7 @@ void printMethodDeclaration(std::ostringstream& output, IR::ClassSession& sessio
         const auto found = lines.find(insn->srcPc);
         if (found != lines.end())
             for (const auto line : found->second) output << "            line " << line << '\n';
-        output << "            " << instruction(cf, bsm, *insn, labels) << '\n';
+        output << "            " << instruction(cf, bsm, *insn, labels, dialect) << '\n';
     }
     for (const auto& label : labels.endLabels(*unit))
         output << "        " << labels.name(label) << ":\n";
@@ -690,7 +725,8 @@ void printMethodDeclaration(std::ostringstream& output, IR::ClassSession& sessio
 
 }   //namespace
 
-error::Result<ca::str::Utf16String> JvmPrinter::print(const std::vector<ca::u8>& classBytes) const
+error::Result<ca::str::Utf16String> JvmPrinter::print(const std::vector<ca::u8>& classBytes,
+                                                   JvmDialect dialect) const
 {
     try {
         auto opened = IR::makeSessionFromBytes(C::ByteView{classBytes.data(), classBytes.size()});
@@ -711,6 +747,7 @@ error::Result<ca::str::Utf16String> JvmPrinter::print(const std::vector<ca::u8>&
             findAttr<C::BootstrapMethodsAttr>(cf, cf.attrs, "BootstrapMethods");
 
         std::ostringstream output;
+        if (dialect == JvmDialect::R) output << "//! dialect r\n";
         if (const auto* inner = findAttr<C::InnerClassesAttr>(cf, cf.attrs, "InnerClasses")) {
             for (const auto& row : inner->rows) {
                 output << ".inner " << modifiers(static_cast<ca::i32>(row.accessFlags), true, false)
@@ -827,7 +864,7 @@ error::Result<ca::str::Utf16String> JvmPrinter::print(const std::vector<ca::u8>&
             const auto  member = "method " + literal(cf.utf8(method.nameCp)) + " " +
                                 literal(cf.utf8(method.descCp));
             try {
-                printMethodDeclaration(output, session, index, bsm);
+                printMethodDeclaration(output, session, index, bsm, dialect);
             }
             catch (const std::exception& error) { rethrowIn(member, error); }
             if (index + 1 != cf.methods.size()) output << '\n';
@@ -843,7 +880,7 @@ error::Result<ca::str::Utf16String> JvmPrinter::print(const std::vector<ca::u8>&
 
 error::Result<ca::str::Utf16String> JvmPrinter::printMethod(
     const std::vector<ca::u8>& classBytes, ca::str::Utf8StringRef name,
-    ca::str::Utf8StringRef descriptor) const
+    ca::str::Utf8StringRef descriptor, JvmDialect dialect) const
 {
     try {
         auto opened = IR::makeSessionFromBytes(C::ByteView{classBytes.data(), classBytes.size()});
@@ -867,7 +904,7 @@ error::Result<ca::str::Utf16String> JvmPrinter::printMethod(
             if (cf.utf8(method.nameCp) == std::string_view(name) &&
                 cf.utf8(method.descCp) == std::string_view(descriptor)) {
                 std::ostringstream output;
-                printMethodDeclaration(output, session, index, bsm);
+                printMethodDeclaration(output, session, index, bsm, dialect);
                 return error::Result<ca::str::Utf16String>::ok(utf16(output.str()));
             }
         }

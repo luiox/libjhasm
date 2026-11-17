@@ -27,12 +27,14 @@ std::vector<ElementPtr> methodChildren(const IdentifierPtr& name, const Identifi
                                        const std::vector<IdentifierPtr>&              parameters,
                                        const ElementPtr&                              defaultValue,
                                        const std::vector<std::shared_ptr<Exception>>& exceptions,
-                                       const std::shared_ptr<Code>&                   code)
+                                       const std::shared_ptr<Code>&                   code,
+                                       const ElementPtr&                             maxs)
 {
     std::vector<ElementPtr> result{name, descriptor};
     result.insert(result.end(), parameters.begin(), parameters.end());
     if (defaultValue) result.push_back(defaultValue);
     result.insert(result.end(), exceptions.begin(), exceptions.end());
+    if (maxs) result.push_back(maxs);
     if (code) result.push_back(code);
     return result;
 }
@@ -131,14 +133,15 @@ Field::Field(Modifiers modifiers, IdentifierPtr name, IdentifierPtr descriptor, 
 Method::Method(Modifiers modifiers, IdentifierPtr name, IdentifierPtr descriptor,
                std::vector<IdentifierPtr> parameters, ParameterAnnotations parameterAnnotations,
                ElementPtr defaultValue, std::vector<std::shared_ptr<Exception>> exceptions,
-               std::shared_ptr<Code> code)
+               std::shared_ptr<Code> code, ElementPtr maxs)
     : Member(std::move(modifiers), name, descriptor,
-             methodChildren(name, descriptor, parameters, defaultValue, exceptions, code))
+             methodChildren(name, descriptor, parameters, defaultValue, exceptions, code, maxs))
     , parameters_(std::move(parameters))
     , parameterAnnotations_(std::move(parameterAnnotations))
     , defaultValue_(std::move(defaultValue))
     , exceptions_(std::move(exceptions))
     , code_(std::move(code))
+    , maxs_(std::move(maxs))
 {}
 
 Class::Class(Modifiers modifiers, IdentifierPtr name, std::vector<ElementPtr> contents)
