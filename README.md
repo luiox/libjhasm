@@ -15,6 +15,13 @@ xmake f
 xmake build libjhasm
 ```
 
+## 文档
+
+- 用户手册演示如何从 C++ 汇编、反汇编和分析 classfile。[用户手册](doc/manual.rst)
+- 语法规范提供声明、指令和操作数参考。[Jasm 语法规范](doc/syntax.rst)
+- 设计文档记录模块分工、校验与编码规则。[架构设计](doc/design.rst) [r/s 方言设计](doc/design-dialects.rst)
+- 开发指南提供构建、测试和文档检查命令。[开发指南](doc/development.rst)
+
 ## License
 
 MIT，见 [LICENSE](LICENSE)。

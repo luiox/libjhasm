@@ -3,9 +3,9 @@
 libjhasm JAsm 语法规范
 ======================
 
-状态：对齐 0.3.x 实现。本文以本仓源码为唯一权威，逐条规则注明依据的文件；标注（实测）的结论有运行佐证（test/smoke 或专项探针），标注（源码推断）的结论只经源码核对、未经运行复验。上游 jumanji144/Jasm（revision ``aacebfa``，C++ 重写的对照基线）只在第 9 节出现，冲突时以本文为准。
+本文描述当前实现的 Jasm 语法。标注（实测）的结论来自测试或专项探针。上游 jumanji144/Jasm 的对照基线为 revision ``aacebfa``，差异见第 8 节。
 
-汇编和反汇编默认使用 s 方言。r 方言的选择方式和校验规则见 :ref:`syntax-dialects`。
+汇编和反汇编默认使用 s 方言。r 方言的选择方式和校验规则见 :ref:`syntax-dialects`。C++ 调用示例见 :doc:`manual`。
 
 本文覆盖 HotSpot/JVM 组合面。Dalvik 语法与 CLI 形态不在本库范围。
 
@@ -692,14 +692,14 @@ r 反汇编保留局部变量指令的短格式、显式槽号及 ``wide`` 前�
 - 帧分析为 Strict 策略，class 主版本 50 起生成 StackMapTable。未知引用类型的合并缺省落到 ``java/lang/Object``，需要精确合并时注入 ``InheritanceChecker``。r 关闭校验时跳过帧分析与 StackMapTable 生成。
 - 方法体超过 65535 字节在落盘前报错，诊断带实际字节数。
 - 诊断位置 1 基行列（UTF-16 码元），编译期错误归属到成员并细化到指令；``assemble`` 任一阶段失败返回错误列表。
-- ``jhasm::analyze`` 对全部非 abstract/native 方法做类型数据流分析，返回逐指令帧快照，单个方法失败不影响其他方法的快照（部分成功语义）。
+- ``jhasm::analyze`` 对带 Code 的方法做类型数据流分析，返回逐指令帧快照。无 Code 的方法保留条目，帧列表为空。方法分析失败时可随诊断返回其他方法的快照。
 
 .. _syntax-upstream:
 
 8. 与上游 jumanji144/Jasm 的差异
 --------------------------------
 
-只列经本仓源码核对的条目；上游行为以 ``D:\WorkSpace\Jasm`` checkout（revision ``aacebfa``）为参照。
+上游行为以 jumanji144/Jasm 的 revision ``aacebfa`` 为参照。
 
 1. 标识符反转义语义相反：上游把标识符里的 ``\uXXXX`` 求值为对应字符；本仓原样保留（1.4）。
 2. 字符串换行的 canonical 形态：上游打 ``\n`` 短形式；本仓打 ``\u000A``\ （``escape_string``）。
@@ -781,3 +781,5 @@ r 反汇编保留局部变量指令的短格式、显式槽号及 ``wide`` 前�
 r 默认开启校验。开启时，``ldc`` 和 ``ldc_w`` 要求单槽常量，``ldc2_w`` 要求 Long 或 Double 常量，``lookupswitch`` 要求键严格递增。``JvmCompilerOptions.verify = false`` 时跳过 JVM 帧分析，允许可编码的非法指令形态。常量池索引、立即数、槽号和方法体大小仍须满足各自的编码范围。
 
 带 ``code`` 的 r 方法可以用 ``maxs: { stack: 3, locals: 7 }`` 指定 ``max_stack`` 和 ``max_locals``。关闭校验时必须给出 ``maxs``。两个值均为 0 到 65535 的整数，汇编时按文本写入。值低于已知需求时，诊断列表会包含警告，仍返回生成的字节。r 保留指令形态，常量池索引可能因重建而变化。
+
+编码保留的范围、校验过程和后端边界见 :doc:`design-dialects`。
