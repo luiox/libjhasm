@@ -2,6 +2,7 @@
 
 #include "jhasm/util/text.hpp"
 
+#include <algorithm>
 #include <charconv>
 #include <string>
 
@@ -55,6 +56,18 @@ bool isLiteral(const ast::ElementPtr& value) noexcept
 {
     return value && (value->getType() == ast::ElementKind::IDENTIFIER ||
                      value->getType() == ast::ElementKind::NUMBER);
+}
+
+bool isWideOpcode(ca::str::Utf16StringRef name) noexcept
+{
+    static constexpr const char* names[] = {
+        "iload", "lload", "fload", "dload", "aload", "istore", "lstore",
+        "fstore", "dstore", "astore", "ret", "iinc",
+    };
+    for (const auto* candidate : names) {
+        if (equals(name, candidate)) return true;
+    }
+    return false;
 }
 
 bool isConstant(const ast::ElementPtr& value) noexcept
@@ -120,10 +133,15 @@ bool verifyOperand(OperandKind kind, const ast::ElementPtr& value) noexcept
         const auto maxKey   = ca::str::Utf16String::value_of("max");
         const auto casesKey = ca::str::Utf16String::value_of("cases");
         const auto cases    = object->value(casesKey.ref());
-        return isInteger(object->value(minKey.ref())) && isInteger(object->value(maxKey.ref())) &&
-               validateObjectIdentifier(*object, "default") && cases &&
-               (cases->getType() == ast::ElementKind::ARRAY ||
-                cases->getType() == ast::ElementKind::EMPTY);
+        if (!isInteger(object->value(minKey.ref())) || !isInteger(object->value(maxKey.ref())) ||
+            !validateObjectIdentifier(*object, "default") || !cases)
+            return false;
+        if (cases->getType() == ast::ElementKind::EMPTY) return true;
+        const auto array = ast::elementAs<ast::Array>(cases, ast::ElementKind::ARRAY);
+        return array && std::all_of(array->values().begin(), array->values().end(),
+                                    [](const auto& target) {
+                                        return target && target->getType() == ast::ElementKind::IDENTIFIER;
+                                    });
     }
     case OperandKind::LOOKUP_SWITCH:
     {
@@ -250,19 +268,34 @@ const InstructionSpec* JvmInstructions::find(ca::str::Utf16StringRef name) const
 bool JvmInstructions::verify(const ast::Instruction& instruction,
                              error::ErrorCollector&  errors) const
 {
-    const auto* spec = find(instruction.identifier()->content());
+    auto name = instruction.identifier()->content();
+    const auto& arguments = instruction.arguments();
+    ca::usize firstOperand = 0;
+    if (equals(name, "wide")) {
+        if (arguments.empty() || !arguments.front() ||
+            arguments.front()->getType() != ast::ElementKind::IDENTIFIER ||
+            !isWideOpcode(arguments.front()->content())) {
+            addError(errors, "Expected a local variable instruction or iinc after wide",
+                     instruction);
+            return false;
+        }
+        name = arguments.front()->content();
+        firstOperand = 1;
+    }
+    const auto* spec = find(name);
     if (!spec) {
         addError(errors, "Unknown JVM instruction", instruction);
         return false;
     }
-    if (instruction.arguments().size() != spec->operands.size()) {
+    if (arguments.size() - firstOperand != spec->operands.size()) {
         addError(errors, "Unexpected JVM instruction operand count", instruction);
         return false;
     }
     bool valid = true;
     for (ca::usize index = 0; index < spec->operands.size(); ++index) {
-        if (!verifyOperand(spec->operands[index], instruction.arguments()[index])) {
-            addError(errors, "Invalid JVM instruction operand", *instruction.arguments()[index]);
+        const auto& argument = arguments[index + firstOperand];
+        if (!verifyOperand(spec->operands[index], argument)) {
+            addError(errors, "Invalid JVM instruction operand", argument ? *argument : instruction);
             valid = false;
         }
     }

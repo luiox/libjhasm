@@ -5,6 +5,9 @@
 
 #include "jvm_compile_detail.hpp"
 
+#include "jhasm/error/warn.hpp"
+
+#include <optional>
 #include <unordered_map>
 #include <utility>
 
@@ -17,7 +20,8 @@ class CodeCompiler final
 {
 public:
     CodeCompiler(IR::ClassSession& session, IR::CodeUnitRef unit, const ast::Method& method,
-                 const std::string& descriptor);
+                 const std::string& descriptor, JvmDialect dialect = JvmDialect::S,
+                 bool verify = true);
 
     void compile();
 
@@ -32,7 +36,8 @@ private:
     ca::i32 variable(const ast::ElementPtr& value, bool wide);
     void emit(const ast::InstructionPtr& item);
     void append(IR::Insn in);
-    IR::Insn insnFor(ca::str::Utf16StringRef name, const std::vector<ast::ElementPtr>& args);
+    IR::Insn insnFor(ca::str::Utf16StringRef name, const std::vector<ast::ElementPtr>& args,
+                     bool explicitWide = false);
     static bool isVarOpcode(C::Op op) noexcept;
     static bool isJumpOpcode(C::Op op) noexcept;
     std::string methodPath(const std::vector<ast::ElementPtr>& args) const;
@@ -40,6 +45,8 @@ private:
     IR::ClassSession& session_;
     IR::CodeUnitRef   unit_;
     const ast::Method& method_;
+    JvmDialect         dialect_;
+    bool               verify_;
     SpecArena          arena_;
     std::unordered_map<std::string, IR::LabelId> labels_;
     std::unordered_map<std::string, ca::i32>      variables_;
@@ -47,6 +54,12 @@ private:
     std::vector<ca::i32>                          pendingLines_;
     std::vector<std::pair<IR::InsnId, ca::i32>>   lineRows_;
     ca::i32                                       nextVariable_ = 0;
+};
+
+struct RawMaxs final
+{
+    ca::u16 stack;
+    ca::u16 locals;
 };
 
 /// @brief Strict 帧计算 → SMT 生成 → maxes 采用 → lower → SMT/LNT 挂回。
@@ -57,6 +70,7 @@ private:
 void finishBody(IR::ClassSession& session, IR::MethodId method, IR::CodeUnit& unit,
                 const std::vector<std::pair<IR::InsnId, ca::i32>>& lineRows,
                 const JvmCompilerOptions& options, const std::string& name,
-                const std::string& descriptor, bool isStatic);
+                const std::string& descriptor, bool isStatic, JvmDialect dialect,
+                const std::optional<RawMaxs>& maxs, std::vector<error::Warn>& warnings);
 
 }   //namespace jhasm::compile

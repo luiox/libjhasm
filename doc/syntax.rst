@@ -5,6 +5,8 @@ libjhasm JAsm 语法规范
 
 状态：对齐 0.3.x 实现。本文以本仓源码为唯一权威，逐条规则注明依据的文件；标注（实测）的结论有运行佐证（test/smoke 或专项探针），标注（源码推断）的结论只经源码核对、未经运行复验。上游 jumanji144/Jasm（revision ``aacebfa``，C++ 重写的对照基线）只在第 9 节出现，冲突时以本文为准。
 
+汇编和反汇编默认使用 s 方言。r 方言的选择方式和校验规则见 :ref:`syntax-dialects`。
+
 本文覆盖 HotSpot/JVM 组合面。Dalvik 语法与 CLI 形态不在本库范围。
 
 .. _syntax-lexical:
@@ -269,7 +271,7 @@ libjhasm JAsm 语法规范
         }
     }
 
-方法体是对象，四个键（键序任意，重复键取首个）：
+方法体是对象，键序任意，重复键取首个。
 
 .. list-table::
    :header-rows: 1
@@ -289,8 +291,11 @@ libjhasm JAsm 语法规范
    * - ``default-value``
      - 注解值
      - 注解接口方法的 AnnotationDefault
+   * - ``maxs``\ （r 方言）
+     - ``{ stack: 3, locals: 7 }`` 形态的对象
+     - Code 属性的 ``max_stack`` 和 ``max_locals``，见 :ref:`syntax-dialects`
 
-abstract 或 native 方法用空体 ``{ }``：不落 Code 属性。注意 ``code: { }``\ （空指令体）不是空体声明的等价写法：它会落一个没有 return 出口的 Code 属性，被帧分析拒绝（实测）。非空体方法会跑完整编译管线：指令发射、帧分析（Strict 策略）、class v50 起生成 StackMapTable、64KB 方法体预检（第 7 节）。
+abstract 或 native 方法用空体 ``{ }``，不生成 Code 属性。带 ``code: { }`` 的方法声明请求生成零长度的 Code，只有 r 方言关闭校验时允许这种写法。
 
 .. _syntax-decl-annotation:
 
@@ -404,7 +409,7 @@ abstract 或 native 方法用空体 ``{ }``：不落 Code 属性。注意 ``code
 3. ``parameters`` 里没给全的名字在指令里首次出现时按出现顺序分配新槽：普通指令占一槽，``lload``/``dload``/``lstore``/``dstore`` 占两槽。同一个名字先在哪类指令出现就按哪类定宽。
 4. 数字操作数直接就是槽号，不经分配。
 
-写侧形态：槽 0 到 3 一律落 ``_N`` 短格式（``iload_0`` 等；``ret`` 无短格式）；槽号超 255 落 wide 形。``iinc`` 的增量超出 -128 到 127 同样落 wide 形。
+s 方言把槽 0 到 3 的装载和存储写成 ``_N`` 短格式。r 保留 ``iload 0`` 和 ``iload_0`` 等不同拼写的编码。两种方言在槽号超过 255 或 ``iinc`` 的增量超出 -128 到 127 时使用 wide 编码。r 也接受 ``wide iload 0`` 和 ``wide iinc 0 1`` 等显式前缀。
 
 .. _syntax-code-exception:
 
@@ -529,14 +534,14 @@ abstract 或 native 方法用空体 ``{ }``：不落 Code 属性。注意 ``code
      - Dynamic（condy）
      - ``ldc``
 
-常量池索引超 255 时 ``ldc`` 自动升格 ``ldc_w``；long/double 恒走 ``ldc2_w``。三条助记符读侧全收，语义由常量类别决定，不由助记符决定。布尔字面量（``true``/``false``）不在 ``ldc`` 接受范围：指令操作数的常量校验（``isConstant``）不收布尔元素，写了报操作数错误（实测）；布尔只在注解值（落 Z）与字段常量值（落 Integer 1/0）两处生效。
+s 方言按常量类别选择上表的指令，常量池索引超过 255 时自动将 ``ldc`` 升为 ``ldc_w``。r 方言按显式助记符选择 opcode，``ldc`` 的索引超过 255 时报告错误。布尔字面量（``true``/``false``）不在 ``ldc`` 接受范围：指令操作数的常量校验（``isConstant``）不收布尔元素，写了报操作数错误（实测）；布尔只在注解值（落 Z）与字段常量值（落 Integer 1/0）两处生效。
 
 .. _syntax-insn-push:
 
 5.3 bipush 与 sipush
 ^^^^^^^^^^^^^^^^^^^^
 
-两条助记符都接受整数操作数。汇编时将它们视为整数 ``ldc``，写入常量池 Integer 并按池索引选用 ``ldc`` 或 ``ldc_w``\ （``code_compiler.cpp`` 的 ``insnFor``）。外部 classfile 的原生指令如何打印见 :ref:`syntax-canonical-behavior`。
+两条助记符都接受整数操作数。s 汇编把它们视为整数 ``ldc``，写入常量池 Integer 并按池索引选形。r 汇编生成原生指令，``bipush`` 使用有符号 8 位立即数，``sipush`` 使用有符号 16 位立即数。反汇编的方言规则见 :ref:`syntax-canonical-behavior`。
 
 .. _syntax-insn-branch:
 
@@ -551,7 +556,7 @@ abstract 或 native 方法用空体 ``{ }``：不落 Code 属性。注意 ``code
     lookupswitch { -10: L1, 5: L2, default: L3 }
 
 - ``tableswitch``：``min``、``max`` 必须是整数，``cases`` 是标签数组（可为空），``default`` 是标签。``max`` 只做语法校验，落地边界由 ``min`` 加 cases 个数推导（``min + cases 数 - 1``），两者不一致不报错。
-- ``lookupswitch``：键值对形态，键是数字（对象键位置），值必须是标签；键编译期按数值排序后落地。
+- ``lookupswitch`` 使用整数键和标签值。s 汇编按键值排序，r 汇编按文本顺序写入，开启校验时要求键严格递增。
 - ``cases`` 为空的 ``tableswitch`` 合法（无分支目标，边界按推导收缩）。
 
 .. _syntax-insn-member:
@@ -632,14 +637,13 @@ abstract/native 方法打 ``{ }`` 空体。
    * - 任意标签名
      - 按锚定顺序重编号为 ``L0`` 起步；未被分支或异常表引用的标签直接消失（4.1）
    * - ``parameters`` 名字
-     - 不回显，一切局部变量按槽位号打印；槽 0 到 3 打 ``_N`` 短格式（``iload_0``），其余打长格式（``iload 4``）
+     - 省略参数名，局部变量按槽位号打印
    * - 汇编文本中的 ``bipush``/``sipush``
-     - 汇编后统一打印为 ``ldc``
+     - s 反汇编打印 ``ldc``，r 反汇编打印实际 opcode
    * - 外部 classfile 的原生 ``bipush``/``sipush``
-     - 按原 opcode 打印助记符和十进制立即数（源码推断，``jvm_printer.cpp`` 的
-       ``Imm1``/``Imm2`` 分支）。重新汇编并打印后，文本中的相应指令会变为 ``ldc``
+     - s 反汇编打印 ``ldc`` 和有符号十进制值，r 保留助记符和立即数
    * - ``ldc_w`` / ``ldc2_w`` 输入拼写
-     - 按常量类别归一：cat1 恒打 ``ldc``，cat2 恒打 ``ldc2_w``；输入拼写与池索引宽度不回显
+     - s 反汇编归一化常量装载拼写，r 保留实际 opcode
    * - ``ldc 'e'``
      - ``ldc 101``\ （Integer 十进制）
    * - float/double 字面量
@@ -657,7 +661,7 @@ abstract/native 方法打 ``{ }`` 空体。
    * - ``tableswitch``
      - 单行对象 ``{ min: .., max: .., cases: { .. }, default: .. }``；``max`` 按 min 加目标数推导回显
    * - ``lookupswitch``
-     - 单行键值对，键按落地（已排序）顺序回显
+     - 单行键值对，按 classfile 中的键序打印
    * - ``invokedynamic``
      - 长形式四段；BootstrapMethods 内联进调用点，不单独成节
    * - ``.inner``
@@ -665,7 +669,7 @@ abstract/native 方法打 ``{ }`` 空体。
    * - MethodParameters、StackMapTable、Deprecated、SourceDebugExtension
      - 不打印（MethodParameters 的参数名信息在 canonical 中不可恢复）
 
-拟议的反汇编行为见 :doc:`proposal-dialect-rs`。
+r 反汇编保留局部变量指令的短格式、显式槽号及 ``wide`` 前缀，并为带 Code 的方法打印 ``maxs``。
 
 .. _syntax-canonical-gap:
 
@@ -684,8 +688,8 @@ abstract/native 方法打 ``{ }`` 空体。
 -----------------
 
 - 目标代次由汇编选项决定（``JvmCompilerOptions.majorVersion``，默认 61；``minorVersion`` 默认 0）。文本里没有版本声明，``.version`` 不是本方言的关键字。
-- ``maxLocals`` 起点是参数槽总数，帧分析后采纳计算值。
-- 帧分析为 Strict 策略；class 主版本 50 起生成 StackMapTable。未知引用类型的合并缺省落到 ``java/lang/Object``，需要精确合并时注入 ``InheritanceChecker``。
+- ``maxLocals`` 起点是参数槽总数。开启校验时计算栈和槽位需求，r 文本的显式 ``maxs`` 优先用于写出。
+- 帧分析为 Strict 策略，class 主版本 50 起生成 StackMapTable。未知引用类型的合并缺省落到 ``java/lang/Object``，需要精确合并时注入 ``InheritanceChecker``。r 关闭校验时跳过帧分析与 StackMapTable 生成。
 - 方法体超过 65535 字节在落盘前报错，诊断带实际字节数。
 - 诊断位置 1 基行列（UTF-16 码元），编译期错误归属到成员并细化到指令；``assemble`` 任一阶段失败返回错误列表。
 - ``jhasm::analyze`` 对全部非 abstract/native 方法做类型数据流分析，返回逐指令帧快照，单个方法失败不影响其他方法的快照（部分成功语义）。
@@ -699,7 +703,7 @@ abstract/native 方法打 ``{ }`` 空体。
 
 1. 标识符反转义语义相反：上游把标识符里的 ``\uXXXX`` 求值为对应字符；本仓原样保留（1.4）。
 2. 字符串换行的 canonical 形态：上游打 ``\n`` 短形式；本仓打 ``\u000A``\ （``escape_string``）。
-3. 常量装载的归一方向相反。读侧两个方言一致，都注册 ``ldc``/``ldc_w``/``ldc2_w`` 三个拼写并进同一常量装载语义（上游三拼写都进 ``visitLdcInsn`` 单口）。canonical 打印侧相反：上游把小值常量折叠成 ``iconst_N``/``bipush``/``sipush``/``lconst_N``/``fconst_N``/``dconst_N``，其余恒打 ``ldc``，cat2 也不打 ``ldc2_w``；本仓把 push 类编译期并入 ``ldc``，cat2 打 ``ldc2_w``，``ldc_w`` 永不回显。
+3. 上游和本仓的 s 方言都把 ``ldc``、``ldc_w``、``ldc2_w`` 三种拼写按常量语义处理。上游打印会选用 ``iconst_N``、``bipush``、``sipush`` 等小常量指令，其余打印 ``ldc``。本仓的 s 方言将原生 push 指令打印为 ``ldc``，cat2 常量打印为 ``ldc2_w``。r 方言保留 classfile 中的指令形态。
 4. 标签重编号、槽位索引化、``parameters`` 不回显等规范化行为以本仓 printer 为准（6.3）。
 
 词法骨架（token 分类、数字后缀、容器值、声明结构）与上游一致。
@@ -765,4 +769,15 @@ abstract/native 方法打 ``{ }`` 空体。
 - 打印：``src/jhasm/printer/jvm_printer.cpp``、``src/jhasm/util/escape_util.cpp``
 - 公开 API：``src/jhasm/jhasm.hpp``、``compile/jvm_compiler.hpp``
 
-实测依据分两层。一层是 ``test/smoke/roundtrip_smoke.cpp``\ （汇编、分析、规范化稳定与真实语料往返）。另一层是写作本文时用 0.3.3 现场构建的探针逐条运行复核的约 30 项行为断言：``bipush`` 并入 ``ldc``、``0b`` 截断落 0、负十六进制在 ``ldc`` 位正常落值而在整数操作数位拒绝、下划线截断、``ldc true`` 拒绝、字段布尔常量落 ``1``、标识符不反转义、未知字符串转义吞字符、换行 canonical 为 ``\u000A``、``_N`` 短格式回显、未引用标签消失、``lookupswitch`` 键排序、``tableswitch`` max 推导、无 ``.super`` 时 super_class 落 0（字节级核对）、空 code 体拒绝、尾逗号接受、标签与指令同行可解析、``ldc_w`` 打 ``ldc``、float 打 ``%.9g`` 形态、无后缀浮点按 double 打 ``%.17g``、Class 与 MethodType 常量往返、接口助记符往返、异常表 ``*`` 往返、类型注解读合法写不对称、``parameters`` 不回显。外部 classfile 的原生 ``bipush``/``sipush`` 打印行为见 :ref:`syntax-canonical-behavior` 中标注的源码推断。若后续实现与本文冲突，以实现为准并回改本文。
+实测依据分两层。一层是 ``test/smoke/roundtrip_smoke.cpp``\ （汇编、分析、规范化稳定与真实语料往返）。另一层是写作本文时用 0.3.3 现场构建的探针逐条运行复核的约 30 项行为断言：``bipush`` 并入 ``ldc``、``0b`` 截断落 0、负十六进制在 ``ldc`` 位正常落值而在整数操作数位拒绝、下划线截断、``ldc true`` 拒绝、字段布尔常量落 ``1``、标识符不反转义、未知字符串转义吞字符、换行 canonical 为 ``\u000A``、``_N`` 短格式回显、未引用标签消失、``lookupswitch`` 键排序、``tableswitch`` max 推导、无 ``.super`` 时 super_class 落 0（字节级核对）、空 code 体拒绝、尾逗号接受、标签与指令同行可解析、``ldc_w`` 打 ``ldc``、float 打 ``%.9g`` 形态、无后缀浮点按 double 打 ``%.17g``、Class 与 MethodType 常量往返、接口助记符往返、异常表 ``*`` 往返、类型注解读合法写不对称、``parameters`` 不回显。方言的字节级断言见 ``test/unittest/dialect_test.cpp``。若后续实现与本文冲突，以实现为准并回改本文。
+
+.. _syntax-dialects:
+
+11. s 与 r 方言
+---------------
+
+输入首行用 ``//! dialect r`` 选择 r。首行无标记时使用 ``JvmCompilerOptions.dialect``，选项留空时使用 s。标记与显式选项冲突会报错。``disassemble(bytes, JvmDialect::R)`` 输出首行标记和原始指令形态。``disassembleMethod`` 只输出方法声明，嵌入类文本时由调用方选择方言。
+
+r 默认开启校验。开启时，``ldc`` 和 ``ldc_w`` 要求单槽常量，``ldc2_w`` 要求 Long 或 Double 常量，``lookupswitch`` 要求键严格递增。``JvmCompilerOptions.verify = false`` 时跳过 JVM 帧分析，允许可编码的非法指令形态。常量池索引、立即数、槽号和方法体大小仍须满足各自的编码范围。
+
+带 ``code`` 的 r 方法可以用 ``maxs: { stack: 3, locals: 7 }`` 指定 ``max_stack`` 和 ``max_locals``。关闭校验时必须给出 ``maxs``。两个值均为 0 到 65535 的整数，汇编时按文本写入。值低于已知需求时，诊断列表会包含警告，仍返回生成的字节。r 保留指令形态，常量池索引可能因重建而变化。

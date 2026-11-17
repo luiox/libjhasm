@@ -315,11 +315,13 @@ private:
         std::vector<std::shared_ptr<Exception>> exceptions;
         std::shared_ptr<Code>                   code;
         ElementPtr                              defaultValue;
+        ElementPtr                              maxs;
         if (body) {
             auto parametersKey = ca::str::Utf16String::value_of("parameters");
             auto exceptionsKey = ca::str::Utf16String::value_of("exceptions");
             auto codeKey       = ca::str::Utf16String::value_of("code");
             auto defaultKey    = ca::str::Utf16String::value_of("default-value");
+            auto maxsKey       = ca::str::Utf16String::value_of("maxs");
             readIdentifiers(
                 body->value(parametersKey.ref()), parameters, "Expected method parameter");
             readExceptions(body->value(exceptionsKey.ref()), exceptions);
@@ -333,6 +335,7 @@ private:
                     addError("Expected method code", codeElement.get());
             }
             defaultValue = annotationValue(body->value(defaultKey.ref()));
+            maxs = body->value(maxsKey.ref());
         }
         if (code) {
             for (const auto& instruction : code->instructions()) {
@@ -348,7 +351,8 @@ private:
             ParameterAnnotations{},
             std::move(defaultValue),
             std::move(exceptions),
-            std::move(code));
+            std::move(code),
+            std::move(maxs));
         applyGeneric(*result);
         return result;
     }

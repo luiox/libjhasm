@@ -174,7 +174,7 @@ public:
     Method(Modifiers modifiers, IdentifierPtr name, IdentifierPtr descriptor,
            std::vector<IdentifierPtr> parameters, ParameterAnnotations parameterAnnotations,
            ElementPtr defaultValue, std::vector<std::shared_ptr<Exception>> exceptions,
-           std::shared_ptr<Code> code);
+           std::shared_ptr<Code> code, ElementPtr maxs = nullptr);
     ElementKind getType() const noexcept override { return ElementKind::METHOD; }
     const std::vector<IdentifierPtr>& parameters() const noexcept { return parameters_; }
     const ParameterAnnotations&       parameterAnnotations() const noexcept
@@ -187,6 +187,7 @@ public:
         return exceptions_;
     }
     const std::shared_ptr<Code>& code() const noexcept { return code_; }
+    const ElementPtr& maxs() const noexcept { return maxs_; }
 
 private:
     std::vector<IdentifierPtr>              parameters_;
@@ -194,6 +195,7 @@ private:
     ElementPtr                              defaultValue_;
     std::vector<std::shared_ptr<Exception>> exceptions_;
     std::shared_ptr<Code>                   code_;
+    ElementPtr                             maxs_;
 };
 
 class Class final : public Member
