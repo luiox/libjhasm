@@ -1,21 +1,33 @@
-libjhasm 设计规格
-=================================
+libjhasm 文档
+=============
 
-状态：机制先行。三层文档体系的门禁已就位（Sphinx ``-W`` + ``check_refs`` 引用
-门禁 + Doxygen ``WARN_AS_ERROR``），设计规格随内容落位本目录。
-
-三层按**权威来源**分工，扩展名即角色：代码 ``///`` Doxygen 注释是微观契约
-（单符号参数/返回/失败模式与单模块背景定位，``@defgroup`` 组注承载）；
-``doc/*.rst`` 是宏观规格（跨模块设计、模块思想与重要取舍，随内容落位）；
-markdown 只承载流程文档（README 等）。
-
-代码注释以 ``doc:<label>`` 形式指向本目录的具体小节；``check_refs.py`` 校验
-这些指向不会腐烂。RST 里写 ``X`` 头注 指向微观层的 ``@defgroup`` 组名或头
-文件名。硬规则全文见 ``check_refs.py`` 模块 docstring。
+libjhasm 是一个 C++17 库，用于把 Jasm 文本汇编成 JVM classfile、将 classfile
+反汇编为 Jasm，以及分析方法的操作数栈和局部变量。:doc:`manual` 从一个完整示例
+开始，:doc:`syntax` 提供完整的语法参考。
 
 .. toctree::
    :maxdepth: 2
-   :caption: 设计与契约
+   :caption: 使用与语法
 
+   manual
    syntax
-   proposal-dialect-rs
+
+.. toctree::
+   :maxdepth: 2
+   :caption: 设计与开发
+
+   design
+   design-dialects
+   development
+
+.. _documentation-conventions:
+
+文档规范
+--------
+
+RST 记录使用方法、语法规格和跨模块设计。公开头文件的 Doxygen 注释记录符号级的
+入参、返回值、失败模式和所有权。Markdown 用于 README 等流程入口。
+
+正文通过 ``:doc:`` 和 ``:ref:`` 引用其他页面或小节。代码注释可通过
+``doc:<label>`` 指向小节。正文使用 ``X`` 头注 时，``X`` 应是确实存在的
+公开头文件名或 Doxygen 组名。构建和检查命令见 :doc:`development`。

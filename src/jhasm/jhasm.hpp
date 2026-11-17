@@ -19,6 +19,7 @@ const char* get_upstream_revision() noexcept;
 
 /// @brief 执行完整 Jasm JVM 汇编流水线并返回 classfile bytes。
 /// @details 首行 ``//! dialect r`` 声明 R 方言，与显式 API 方言冲突时返回错误。
+///          流水线设计见 doc:design-assembly，方言契约见 doc:design-dialects。
 /// @return 失败时返回错误诊断：AST 归属的语义/装配错误保留 jasm 源位置，
 ///         流水线内部错误无位置；前置阶段失败时 warnings 一并透出。
 error::Result<compile::JvmCompileResult> assemble(ca::str::Utf16StringRef     sourceName,
@@ -48,9 +49,9 @@ error::Result<ca::str::Utf16String> disassembleMethod(const std::vector<ca::u8>&
                                                      ca::str::Utf8StringRef descriptor,
                                                      JvmDialect dialect);
 
-/// @brief 分析 classfile 中全部非 abstract/native 方法并返回 owning frame 快照。
-/// @return 字节不可读时返回无值错误；分析途中单个方法失败记入 errors，
-///         其余方法的快照仍在 value 中（部分成功语义）。
+/// @brief 分析 classfile 中带 Code 的方法，返回拥有型帧快照。
+/// @return 字节不可读时，结果带有错误和空的方法列表。单个方法失败时，结果仍可
+///         携带其余方法的快照。无 Code 的方法保留声明条目，帧列表为空。
 error::Result<analysis::JvmAnalysisResult> analyze(
     const std::vector<ca::u8>& classBytes, const analysis::InheritanceChecker& inheritance =
                                                analysis::EmptyInheritanceChecker::instance());
