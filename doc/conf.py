@@ -1,7 +1,6 @@
-"""Sphinx 配置：libjhasm 设计规格层（宏观）。
+"""Sphinx 配置：libjhasm 项目文档。
 
-规范见 doc/index.rst 文档规范一节：本目录只收 RST 设计规格；markdown 属人读/
-AI 方向层，不进 doctree。CI 以 -W --keep-going 构建，警告即失败。
+规范见 doc/index.rst 的文档规范。CI 以 -W --keep-going 构建，警告即失败。
 """
 
 project = "libjhasm"
@@ -24,7 +23,7 @@ nitpick_ignore = [
 ]
 
 html_theme = "alabaster"
-html_title = "libjhasm 设计规格"
+html_title = "libjhasm 文档"
 html_baseurl = ""
 html_search_language = "zh"  # 需 jieba；未装分词器时仅影响站内搜索，不影响门禁
 html_use_opensearch = ""
